@@ -8,8 +8,10 @@
 # Zone project info
 #~~~~~
 gcp_zone: us-central1-f
-gcp_service_account_email: ***REMOVED***
-gcp_credentials_file: /home/ansible/gcp_creds/***REMOVED***
+#gcp_service_account_email: ***REMOVED***
+#gcp_credentials_file: /home/ansible/gcp_creds/***REMOVED***
+gcp_service_account_email: ""
+gcp_credentials_file: ""
 gcp_project_id: ***REMOVED***
 
 #~~~~~
