@@ -1,0 +1,47 @@
+---
+
+#----------
+# Development environment GCP configs
+#----------
+
+#~~~~~
+# Zone project info
+#~~~~~
+gcp_zone: us-central1-f
+gcp_service_account_email: ***REMOVED***
+gcp_credentials_file: ***REMOVED***
+gcp_project_id: ***REMOVED***
+
+#~~~~~
+# Virtual network info
+#~~~~~
+gcp_net_name: k8s-thw
+gcp_net_mode: custom
+gcp_net_subnet_name: k8s
+gcp_net_subnet_region: us-central1
+gcp_net_ipv4_range: 10.240.0.0/24
+gcp_net_state: present
+
+gcp_net_fw_rules:
+  - name: k8s-internal-all-protocols
+    allow: tcp,udp,icmp
+    network: "{{ gcp_net_name }}"
+    source_ranges: ['10.240.0.0/24','10.200.0.0/16']
+    state: present
+  - name: k8s-external-ssh-icmp-https
+    allow: tcp:22,tcp:6443,icmp
+    network: "{{ gcp_net_name }}"
+    source_ranges: ['0.0.0.0/0']
+    state: present
+  - name: k8s-health-probe-checks
+    allow: tcp:8080
+    network: "{{ gcp_net_name }}"
+    source_ranges: ['209.85.204.0/22','209.85.152.0/22','35.191.0.0/16']
+    state: present
+    
+#~~~~~
+# External IP address info
+#~~~~~
+gcp_ext_ip_name: k8s-thw
+gcp_ext_ip_reggion: us-central1
+gcp_ext_ip_state: present

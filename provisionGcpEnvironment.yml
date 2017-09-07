@@ -1,0 +1,104 @@
+---
+###################
+# File:
+# playbooks/provisionGcpEnvironment.yml
+#
+# Description:
+# Ensures a full GCP Virtual Environment is in place to receive further CM 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+- name: PLAY | Ensure GCP Environment Exists
+  hosts: gcp-environment
+  gather_facts: false
+  vars_files:
+    - vars/vault.yml
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    
+    #~~~~~~~~~~
+    # These tasks will be run once per "environment"
+    #~~~~~~~~~~
+    - name: Ensure network exists
+      gce_net:
+        name: "{{ gcp_net_name }}"
+        mode: "{{ gcp_net_mode }}"
+        subnet_name: "{{ gcp_net_subnet_name }}"
+        subnet_region: "{{ gcp_net_subnet_region }}"
+        ipv4_range: "{{ gcp_net_ipv4_range }}"
+        state: "{{ gcp_net_state }}"
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      delegate_to: 127.0.0.1
+      run_once: true
+      tags:
+        - gcp_network
+      register: ret_val
+        
+    - debug:
+        var: ret_val
+        verbosity: 1
+      run_once: true
+      tags:
+        - gcp_network
+        
+    - name: Ensure firewall rules exist
+      gce_net:
+        name: "{{ item.network }}"
+        fwname: "{{ item.name }}"
+        allowed: "{{ item.allow }}"
+        state: "{{ item.state }}"
+        src_range: "{{ item.source_ranges }}"
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      with_items: "{{ gcp_net_fw_rules }}"
+      delegate_to: 127.0.0.1
+      run_once: true
+      tags:
+        - gcp_fw
+      register: ret_val
+        
+    - debug:
+        var: ret_val
+        verbosity: 1
+      run_once: true
+      tags:
+        - gcp_fw
+    
+    - name: Ensure external IP exists    
+      gce_eip:
+        name: "{{ gcp_ext_ip_name }}"
+        region: "{{ gcp_ext_ip_reggion }}"
+        state: "{{ gcp_ext_ip_state }}"
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      delegate_to: 127.0.0.1
+      run_once: true
+      tags:
+        - gcp_eip
+      register: ret_val
+        
+    - debug:
+        var: ret_val
+        verbosity: 1
+      run_once: true
+      tags:
+        - gcp_eip
+    
+    #~~~~~~~~~~
+    # These tasks will be run once per VM inside the environment
+    #~~~~~~~~~~
+    
+    
