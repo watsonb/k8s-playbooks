@@ -9,7 +9,7 @@
 #~~~~~
 gcp_zone: us-central1-f
 gcp_service_account_email: ***REMOVED***
-gcp_credentials_file: ***REMOVED***
+gcp_credentials_file: /home/ansible/***REMOVED***
 gcp_project_id: ***REMOVED***
 
 #~~~~~
