@@ -101,4 +101,31 @@
     # These tasks will be run once per VM inside the environment
     #~~~~~~~~~~
     
+    - name: Ensure VMs (instances) exist
+      gce:
+        instance_names: "{{ gcp_instance_name }}"
+        zone: "{{ gcp_zone }}"
+        machine_type: "{{ gcp_machine_type }}"
+        image: "{{ gcp_image }}"
+        state: "{{ gcp_state }}"
+        disk_size: "{{ gcp_disk_size }}"
+        disk_auto_delete: "{{ gcp_disk_auto_delete }}"
+        network: "{{ gcp_network }}"
+        subnetwork: "{{ gcp_subnetwork }}"
+        preemptible: "{{ gcp_preemptible }}"
+        ip_forward: "{{ gcp_ip_forward }}"
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      delegate_to: 127.0.0.1
+      tags:
+        - gcp_vm
+      register: ret_val
+        
+    - debug:
+        var: ret_val
+        verbosity: 1
+      run_once: true
+      tags:
+        - gcp_vm
     
