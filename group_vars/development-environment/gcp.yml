@@ -26,17 +26,17 @@ gcp_net_state: present
 
 gcp_net_fw_rules:
   - name: k8s-internal-all-protocols
-    allow: tcp,udp,icmp
+    allow: 'tcp;udp;icmp'
     network: "{{ gcp_net_name }}"
     source_ranges: ['10.240.0.0/24','10.200.0.0/16']
     state: present
   - name: k8s-external-ssh-icmp-https
-    allow: tcp:22,tcp:6443,icmp
+    allow: 'tcp:22;tcp:6443;icmp'
     network: "{{ gcp_net_name }}"
     source_ranges: ['0.0.0.0/0']
     state: present
   - name: k8s-health-probe-checks
-    allow: tcp:8080
+    allow: 'tcp:8080'
     network: "{{ gcp_net_name }}"
     source_ranges: ['209.85.204.0/22','209.85.152.0/22','35.191.0.0/16']
     state: present
