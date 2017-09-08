@@ -23,13 +23,13 @@ ansible-centos7
 
 [k8s-controllers]
 dev-controller-0
-dev-controller-1
-dev-controller-2
+#dev-controller-1
+#dev-controller-2
 
 [k8s-workers]
-dev-worker-0
-dev-worker-1
-dev-worker-2
+#dev-worker-0
+#dev-worker-1
+#dev-worker-2
 
 [binary-repo-servers]
 ansible-centos7
