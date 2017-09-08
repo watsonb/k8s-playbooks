@@ -14,7 +14,7 @@
 #   - TODO: vault the admin password
 ###################
 - name: PLAY | Ensure GCP Environment Exists
-  hosts: gcp-environment
+  hosts: ["gcp-environment:!ansible-controllers"]
   gather_facts: false
 #  vars_files:
 #    - vars/vault.yml
@@ -125,7 +125,7 @@
     - debug:
         var: ret_val
         verbosity: 1
-      run_once: true
+#      run_once: true
       tags:
         - gcp_vm
     
