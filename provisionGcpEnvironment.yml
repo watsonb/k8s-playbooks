@@ -125,13 +125,23 @@
     - debug:
         var: ret_val
         verbosity: 1
-#      run_once: true
+      tags:
+        - gcp_vm
+        
+    - set_fact:
+        gce_inst_pub_ip: "{{ ret_val.instance_data[0].public_ip }}"
+      tags:
+        - gcp_vm
+        
+    - debug:
+        var: gce_inst_pub_ip
+        verbosity: 1
       tags:
         - gcp_vm
     
     - name: LINEINFILE | Update Ansible Controller's /etc/hosts to alias new machines
       lineinfile:
-        path: /etc/ssh/sshd_config
+        path: /etc/hosts
 #        regexp: '^#?AllowTcpForwarding yes'
         line: '{{ item.public_ip }}    {{ inventory_hostname }}'
 #        insertafter: '^#?AllowAgentForwarding yes'
