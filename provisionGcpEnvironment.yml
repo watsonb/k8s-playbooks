@@ -28,7 +28,7 @@
     #~~~~~~~~~~
     # These tasks will be run once per "environment"
     #~~~~~~~~~~
-    - name: Ensure network exists
+    - name: GCE_NET | Ensure network exists
       gce_net:
         name: "{{ gcp_net_name }}"
         mode: "{{ gcp_net_mode }}"
@@ -52,7 +52,7 @@
       tags:
         - gcp_network
         
-    - name: Ensure firewall rules exist
+    - name: GCE_NET | Ensure firewall rules exist
       gce_net:
         name: "{{ item.network }}"
         fwname: "{{ item.name }}"
@@ -76,7 +76,7 @@
       tags:
         - gcp_fw
     
-    - name: Ensure external IP exists    
+    - name: GCE_EIP | Ensure external IP exists    
       gce_eip:
         name: "{{ gcp_ext_ip_name }}"
         region: "{{ gcp_ext_ip_reggion }}"
@@ -101,7 +101,7 @@
     # These tasks will be run once per VM inside the environment
     #~~~~~~~~~~
     
-    - name: Ensure VMs (instances) exist
+    - name: GCE | Ensure VMs (instances) exist
       gce:
         instance_names: "{{ gcp_instance_name }}"
         zone: "{{ gcp_zone }}"
@@ -129,3 +129,22 @@
       tags:
         - gcp_vm
     
+    - name: LINEINFILE | Update Ansible Controller's /etc/hosts to alias new machines
+      lineinfile:
+        path: /etc/ssh/sshd_config
+#        regexp: '^#?AllowTcpForwarding yes'
+        line: '{{ item.public_ip }}    {{ inventory_hostname }}'
+#        insertafter: '^#?AllowAgentForwarding yes'
+        state: present
+        backrefs: yes
+      become: true
+      with_items: ret_val.instance_data
+      delegate_to: 127.0.0.1
+      tags:
+        - gcp_vm
+      
+    #~~~~~~~~~~
+    # By this time, the machines should exist and be reachable by Ansible
+    # Note, I had to add Ansible's SSH key as a project-wide SSH key IAW these
+    # instructions: https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys
+    #~~~~~~~~~~
