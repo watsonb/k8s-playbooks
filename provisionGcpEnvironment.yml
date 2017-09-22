@@ -143,7 +143,7 @@
       lineinfile:
         path: /etc/hosts
 #        regexp: '^#?AllowTcpForwarding yes'
-        line: '{{ item.public_ip }}    {{ inventory_hostname }}'
+        line: '{{ gce_inst_pub_ip }}    {{ inventory_hostname }}'
 #        insertafter: '^#?AllowAgentForwarding yes'
         state: present
         backrefs: yes
