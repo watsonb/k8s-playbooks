@@ -146,7 +146,7 @@
         line: '{{ gce_inst_pub_ip }}    {{ inventory_hostname }}'
 #        insertafter: '^#?AllowAgentForwarding yes'
         state: present
-        backrefs: yes
+#        backrefs: yes
       become: true
       with_items: ret_val.instance_data
       delegate_to: 127.0.0.1
