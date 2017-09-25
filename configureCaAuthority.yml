@@ -167,7 +167,7 @@
         - kube_api_server_cer
         
     - set_fact:
-        gcp_net_static_ip: "{{ ret_val_gcp_net_static_ip.stdout_lines[1] }}"
+        gcp_net_static_ip: "{{ ret_val_gcp_net_static_ip.stdout_lines[0] }}"
       tags:
         - kube_api_server_cer
         
