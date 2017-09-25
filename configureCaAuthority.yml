@@ -32,6 +32,41 @@
         owner: root
         group: root
       become: true
+      tags:
+        - ca_dir
+      
+    - name: GET_URL | Download/install cfssl
+      get_url:
+        url: https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+        dest: /usr/local/bin/cfssl
+        mode: 0775
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_sw
+      
+    - name: GET_URL | Download/install cfssljson
+      get_url:
+        url: https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+        dest: /usr/local/bin/cfssljson
+        mode: 0775
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_sw
+      
+    - name: GET_URL | Download/install kubectl
+      get_url:
+        url: https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: 0775
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_sw
     
     - name: TEMPLATE | Template out the CA config file
       template:
@@ -40,6 +75,8 @@
         owner: root
         group: root
       become: true
+      tags:
+        - ca_cer
       
     - name: TEMPLATE | Template out the CA csr file
       template:
@@ -48,30 +85,94 @@
         owner: root
         group: root
       become: true
+      tags:
+        - ca_cer
       
-    - name: Download/install cfssl
-      get_url:
-        url: https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
-        dest: /usr/local/bin/cfssl
-        mode: 0775
+    - name: SHELL | Generate CA cert and private key
+      shell: cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/ca.pem"
+      become: true
+      tags:
+        - ca_cer
+      
+    - name: TEMPLATE | Template out the admin csr file
+      template:
+        src: admin-csr.json.j2
+        dest: "{{ ca_dir }}/admin-csr.json"
         owner: root
         group: root
       become: true
+      tags:
+        - admin_cer
       
-    - name: Download/install cfssljson
-      get_url:
-        url: https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
-        dest: /usr/local/bin/cfssljson
-        mode: 0775
+    - name: SHELL | Generate admin cert and private key
+      shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes admin-csr.json | cfssljson -bare admin
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/admin.pem"
+      become: true
+      tags:
+        - admin_cer
+      
+    - name: TEMPLATE | Template out the kube proxy csr file
+      template:
+        src: kube-proxy-csr.json.j2
+        dest: "{{ ca_dir }}/kube-proxy-csr.json"
         owner: root
         group: root
       become: true
+      tags:
+        - kube_proxy_cer
       
-    - name: Download/install kubectl
-      get_url:
-        url: https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl
-        dest: /usr/local/bin/kubectl
-        mode: 0775
+    - name: SHELL | Generate kube proxy cert and private key
+      shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-proxy-csr.json | cfssljson -bare kube-proxy
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/kube-proxy.pem"
+      become: true
+      tags:
+        - kube_proxy_cer
+      
+    - name: SHELL | determine static IP of network
+      shell: echo $(gcloud compute addresses describe {{ gcp_net_name }} --region $(gcloud config get-value compute/region) --format 'value(address)')
+      register: ret_val_gcp_net_static_ip
+      tags:
+        - kube_api_server_cer
+      
+    - debug:
+        var: ret_val_gcp_net_static_ip
+        verbosity: 1
+      tags:
+        - kube_api_server_cer
+        
+    - set_fact:
+        gcp_net_static_ip: "{{ ret_val_gcp_net_static_ip.stdout_lines[1] }}"
+      tags:
+        - kube_api_server_cer
+        
+    - debug:
+        var: gcp_net_static_ip
+        verbosity: 1
+      tags:
+        - kube_api_server_cer
+        
+    - name: TEMPLATE | Template out the kubernetes csr file
+      template:
+        src: kubernetes-csr.json.j2
+        dest: "{{ ca_dir }}/kubernetes-csr.json"
         owner: root
         group: root
       become: true
+      tags:
+        - kube_api_server_cer
+        
+    - name: SHELL | Generate kubernetes api server cert and private key
+      shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,{{ gcp_net_static_ip }},127.0.0.1,kubernetes.default -profile=kubernetes kubernetes-csr.json | cfssljson -bare kubernetes
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/kubernetes.pem"
+      become: true
+      tags:
+        - kube_proxy_cer
