@@ -13,3 +13,4 @@ gcp_network: "{{ gcp_net_name }}"
 gcp_subnetwork: "{{ gcp_net_subnet_name }}"
 gcp_preemptible: false
 gcp_ip_forward: true
+gcp_startup_script: cat >> /etc/sudoers <<EOF ansible ALL=(ALL)     NOPASSWD:ALL EOF
