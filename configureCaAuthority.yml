@@ -34,6 +34,13 @@
       become: true
       tags:
         - ca_dir
+        
+    - name: FILE | Ensure bin directory exists for user
+      file:
+        path: "~/bin"
+        state: directory
+      tags:
+        - ca_sw
       
     - name: GET_URL | Download/install cfssl
       get_url:
@@ -65,6 +72,18 @@
         owner: root
         group: root
       become: true
+      tags:
+        - ca_sw
+        
+    - name: FILE | Link to bin directory
+      file:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        state: link
+      with_items:
+        - { src: /usr/local/bin/cfssl, dest: "~/bin/cfssl" }
+        - { src: /usr/local/bin/cfssljson, dest: "~/bin/cfssljson" }
+        - { src: /usr/local/bin/kubectl, dest: "~/bin/kubectl" }
       tags:
         - ca_sw
     
