@@ -268,3 +268,13 @@
         verbosity: 1
       tags:
         - worker_cer
+        
+    - name: SHELL | Generate worker cert and private key
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname={{ inventory_hostname }},{{ gcp_inst_nat_ip }},{{ gcp_inst_int_ip }} -profile=kubernetes {{ inventory_hostname }}-csr.json | /usr/local/bin/cfssljson -bare {{ inventory_hostname }}
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/{{ inventory_hostname }}.pem"
+      become: true
+      tags:
+        - worker_cer
