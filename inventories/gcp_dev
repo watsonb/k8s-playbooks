@@ -27,7 +27,7 @@ dev-controller-0
 #dev-controller-2
 
 [k8s-workers]
-#dev-worker-0
+dev-worker-0
 #dev-worker-1
 #dev-worker-2
 

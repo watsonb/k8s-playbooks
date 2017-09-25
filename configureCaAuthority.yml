@@ -195,3 +195,76 @@
       become: true
       tags:
         - kube_api_server_cer
+
+#################################################
+# Play to generate worker certs
+#################################################        
+- name: PLAY | Generate worker CSRs
+  hosts: k8s-workers
+  gather_facts: false
+  vars:
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: TEMPLATE | Template out the kubernetes csr file
+      delegate_to: 127.0.0.1
+      template:
+        src: worker-csr.json.j2
+        dest: "{{ ca_dir }}/{{ inventory_hostname }}-csr.json"
+        owner: root
+        group: root
+      become: true
+      tags:
+        - worker_cer
+        
+    - name: SHELL | determine external IP
+      delegate_to: 127.0.0.1
+      shell: echo $(gcloud compute addresses describe {{ inventory_hostname }} --format 'value(networkInterfaces[0].accessConfigs[0].natIP)')
+      register: ret_val_gcp_inst_nat_ip
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: ret_val_gcp_inst_nat_ip
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - set_fact:
+        gcp_inst_nat_ip: "{{ ret_val_gcp_inst_nat_ip.stdout_lines[0] }}"
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: gcp_inst_nat_ip
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - name: SHELL | determine internal IP
+      delegate_to: 127.0.0.1
+      shell: echo $(gcloud compute addresses describe {{ inventory_hostname }} --format 'value(networkInterfaces[0].networkIP)')
+      register: ret_val_gcp_inst_int_ip
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: ret_val_gcp_inst_int_ip
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - set_fact:
+        gcp_inst_int_ip: "{{ ret_val_gcp_inst_int_ip.stdout_lines[0] }}"
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: gcp_inst_int_ip
+        verbosity: 1
+      tags:
+        - worker_cer
