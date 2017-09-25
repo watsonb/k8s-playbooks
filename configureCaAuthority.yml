@@ -1,0 +1,77 @@
+---
+###################
+# File:
+# playbooks/configureCaAuthority.yml
+#
+# Description:
+# Sets up the CA Authority box according to instructions here:
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+- name: PLAY | Configure CA Authority
+  hosts: ansible-controllers
+  gather_facts: false
+  vars:
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: FILE | Ensure destination directory exists for CA files
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+      become: true
+    
+    - name: TEMPLATE | Template out the CA config file
+      template:
+        src: ca-config.json.j2
+        dest: "{{ ca_dir }}/ca-config.json"
+        owner: root
+        group: root
+      become: true
+      
+    - name: TEMPLATE | Template out the CA csr file
+      template:
+        src: ca-csr.json.j2
+        dest: "{{ ca_dir }}/ca-csr.json"
+        owner: root
+        group: root
+      become: true
+      
+    - name: Download/install cfssl
+      get_url:
+        url: https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+        dest: /usr/local/bin/cfssl
+        mode: 0775
+        owner: root
+        group: root
+      become: true
+      
+    - name: Download/install cfssljson
+      get_url:
+        url: https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+        dest: /usr/local/bin/cfssljson
+        mode: 0775
+        owner: root
+        group: root
+      become: true
+      
+    - name: Download/install kubectl
+      get_url:
+        url: https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: 0775
+        owner: root
+        group: root
+      become: true

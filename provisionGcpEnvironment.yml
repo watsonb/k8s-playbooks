@@ -143,19 +143,34 @@
     - name: LINEINFILE | Update Ansible Controller's /etc/hosts to alias new machines
       lineinfile:
         path: /etc/hosts
-#        regexp: '^#?AllowTcpForwarding yes'
         line: '{{ gce_inst_pub_ip }}    {{ inventory_hostname }}'
-#        insertafter: '^#?AllowAgentForwarding yes'
         state: present
-#        backrefs: yes
       become: true
       with_items: ret_val.instance_data
       delegate_to: 127.0.0.1
       tags:
         - gcp_vm
+        
+    - name: WAIT_FOR | Wait for SSH (port 22) on GCP VMs
+      wait_for:
+        delay: 30
+        host: "{{ gce_inst_pub_ip }}"
+        port: 22
+        state: started
+        timeout: 120
+      
       
     #~~~~~~~~~~
     # By this time, the machines should exist and be reachable by Ansible
-    # Note, I had to add Ansible's SSH key as a project-wide SSH key IAW these
+    #
+    # Note1: I had to add Ansible's SSH key as a project-wide SSH key IAW these
     # instructions: https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys
+    #
+    # Note2: I added the metadata attribute to the gce module in an attempt to
+    # run a start-up script when the machine is created.  The intent of the 
+    # script is to add the ansible user (user of above key) to /etc/sudoers
+    # so it can run sudo commands without a password.  However, I don't see the
+    # expected line in /etc/sudoers, but the ansible user can still run sudo
+    # commands without a password.  Perhaps doing note1 above accomplishes the
+    # desired effect via Google magic?
     #~~~~~~~~~~
