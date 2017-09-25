@@ -223,7 +223,7 @@
         
     - name: SHELL | determine external IP
       delegate_to: 127.0.0.1
-      shell: echo $(gcloud compute addresses describe {{ inventory_hostname }} --region $(gcloud config get-value compute/region) --format 'value(networkInterfaces[0].accessConfigs[0].natIP)')
+      shell: echo $(gcloud compute instances describe {{ inventory_hostname }} --region $(gcloud config get-value compute/region) --format 'value(networkInterfaces[0].accessConfigs[0].natIP)')
       register: ret_val_gcp_inst_nat_ip
       tags:
         - worker_cer
@@ -247,7 +247,7 @@
         
     - name: SHELL | determine internal IP
       delegate_to: 127.0.0.1
-      shell: echo $(gcloud compute addresses describe {{ inventory_hostname }} --region $(gcloud config get-value compute/region) --format 'value(networkInterfaces[0].networkIP)')
+      shell: echo $(gcloud compute instances describe {{ inventory_hostname }} --region $(gcloud config get-value compute/region) --format 'value(networkInterfaces[0].networkIP)')
       register: ret_val_gcp_inst_int_ip
       tags:
         - worker_cer
