@@ -108,7 +108,7 @@
         - ca_cer
       
     - name: SHELL | Generate CA cert and private key
-      shell: cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+      shell: /usr/local/bin/cfssl gencert -initca ca-csr.json | /usr/local/bin/cfssljson -bare ca
       args:
         chdir: "{{ ca_dir }}"
         creates: "{{ ca_dir }}/ca.pem"
@@ -127,7 +127,7 @@
         - admin_cer
       
     - name: SHELL | Generate admin cert and private key
-      shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes admin-csr.json | cfssljson -bare admin
+      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes admin-csr.json | /usr/local/bin/cfssljson -bare admin
       args:
         chdir: "{{ ca_dir }}"
         creates: "{{ ca_dir }}/admin.pem"
@@ -146,7 +146,7 @@
         - kube_proxy_cer
       
     - name: SHELL | Generate kube proxy cert and private key
-      shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-proxy-csr.json | cfssljson -bare kube-proxy
+      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-proxy-csr.json | /usr/local/bin/cfssljson -bare kube-proxy
       args:
         chdir: "{{ ca_dir }}"
         creates: "{{ ca_dir }}/kube-proxy.pem"
@@ -188,10 +188,10 @@
         - kube_api_server_cer
         
     - name: SHELL | Generate kubernetes api server cert and private key
-      shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,{{ gcp_net_static_ip }},127.0.0.1,kubernetes.default -profile=kubernetes kubernetes-csr.json | cfssljson -bare kubernetes
+      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,{{ gcp_net_static_ip }},127.0.0.1,kubernetes.default -profile=kubernetes kubernetes-csr.json | /usr/local/bin/cfssljson -bare kubernetes
       args:
         chdir: "{{ ca_dir }}"
         creates: "{{ ca_dir }}/kubernetes.pem"
       become: true
       tags:
-        - kube_proxy_cer
+        - kube_api_server_cer
