@@ -195,6 +195,18 @@
       become: true
       tags:
         - kube_api_server_cer
+        
+    - name: FILE | File permissions on Ansible controller
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0644
+        recurse: true
+      become: true
+      tags:
+        - ansible_cert_perms
 
 #################################################
 # Play to generate worker certs
@@ -397,6 +409,18 @@
       become: true
       tags:
         - worker_kube_config
+        
+    - name: FILE | File permissions on Ansible controller
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0644
+        recurse: true
+      become: true
+      tags:
+        - ansible_cert_perms
         
 #################################################
 # Play to distribute certs to workers
