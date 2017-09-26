@@ -278,3 +278,130 @@
       become: true
       tags:
         - worker_cer
+        
+    - name: SHELL | determine static IP of network
+      delegate_to: 127.0.0.1
+      run_once: true
+      shell: echo $(gcloud compute addresses describe {{ gcp_net_name }} --region $(gcloud config get-value compute/region) --format 'value(address)')
+      register: ret_val_gcp_net_static_ip
+      tags:
+        - worker_kube_config
+      
+    - debug:
+        var: ret_val_gcp_net_static_ip
+        verbosity: 1
+      tags:
+        - worker_kube_config
+        
+    - set_fact:
+        gcp_net_static_ip: "{{ ret_val_gcp_net_static_ip.stdout_lines[0] }}"
+      tags:
+        - worker_kube_config
+        
+    - debug:
+        var: gcp_net_static_ip
+        verbosity: 1
+      tags:
+        - worker_kube_config
+        
+#    - name: SHELL | Generate worker kube config (pt 1)
+#      delegate_to: 127.0.0.1
+#      shell: /usr/local/bin/kubectl config set-cluster {{ gcp_net_name }} --certificate-authority=ca.pem --embed-certs=true --server=https://{{ gcp_net_static_ip }}:6443 --kubeconfig={{ inventory_hostname }}.kubeconfig
+#      args:
+#        chdir: "{{ ca_dir }}"
+#        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
+#      become: true
+#      tags:
+#        - worker_kube_config
+#        
+#    - name: SHELL | Generate worker kube config (pt 2)
+#      delegate_to: 127.0.0.1
+#      shell: /usr/local/bin/kubectl config set-credentials system:node:{{ inventory_hostname }} --client-certificate={{ inventory_hostname }}.pem --client-key={{ inventory_hostname }}-key.pem --embed-certs=true --kubeconfig={{ inventory_hostname }}.kubeconfig
+#      args:
+#        chdir: "{{ ca_dir }}"
+#        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
+#      become: true
+#      tags:
+#        - worker_kube_config
+#        
+#    - name: SHELL | Generate worker kube config (pt 3)
+#      delegate_to: 127.0.0.1
+#      shell: /usr/local/bin/kubectl config set-context default --cluster={{ gcp_net_name }} --user=system:node:{{ inventory_hostname }} --kubeconfig={{ inventory_hostname }}.kubeconfig
+#      args:
+#        chdir: "{{ ca_dir }}"
+#        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
+#      become: true
+#      tags:
+#        - worker_kube_config
+#        
+#    - name: SHELL | Generate worker kube config (pt 4)
+#      delegate_to: 127.0.0.1
+#      shell: /usr/local/bin/kubectl config use-context default --kubeconfig={{ inventory_hostname }}.kubeconfig
+#      args:
+#        chdir: "{{ ca_dir }}"
+#        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
+#      become: true
+#      tags:
+#        - worker_kube_config
+        
+    - name: SHELL | Generate worker kube config
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl {{ item.cmd }}
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
+      become: true
+      with_items:
+        - { cmd: "config set-cluster {{ gcp_net_name }} --certificate-authority=ca.pem --embed-certs=true --server=https://{{ gcp_net_static_ip }}:6443 --kubeconfig={{ inventory_hostname }}.kubeconfig" }
+        - { cmd: "config set-credentials system:node:{{ inventory_hostname }} --client-certificate={{ inventory_hostname }}.pem --client-key={{ inventory_hostname }}-key.pem --embed-certs=true --kubeconfig={{ inventory_hostname }}.kubeconfig" }
+        - { cmd: "config set-context default --cluster={{ gcp_net_name }} --user=system:node:{{ inventory_hostname }} --kubeconfig={{ inventory_hostname }}.kubeconfig" }
+        - { cmd: "config use-context default --kubeconfig={{ inventory_hostname }}.kubeconfig" }
+      tags:
+        - worker_kube_config
+        
+#################################################
+# Play to distribute certs to workers
+#################################################        
+- name: PLAY | Distribute certs to workers
+  hosts: k8s-workers
+  gather_facts: false
+  vars:
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: COPY | Copy appropriate cert files to workers
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: "{{ ca_dir }}/ca.pem", dest: "~/" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem", dest: "~/" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.pem", dest: "~/" }
+        
+#################################################
+# Play to distribute certs to controllers
+#################################################        
+- name: PLAY | Distribute certs to controllers
+  hosts: k8s-controllers
+  gather_facts: false
+  vars:
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: COPY | Copy appropriate cert files to controllers
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: "{{ ca_dir }}/ca.pem", dest: "~/" }
+        - { src: "{{ ca_dir }}/ca-key.pem", dest: "~/" }
+        - { src: "{{ ca_dir }}/kubernetes-key.pem", dest: "~/" }
+        - { src: "{{ ca_dir }}/kubernetes.pem", dest: "~/" }
