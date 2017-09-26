@@ -41,3 +41,13 @@
         dest: "{{ tmp_dir }}"
         remote_src: true
       become: true
+      
+    - name: COPY | copy the etcd binaries to a bin directory
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+      become: true
+      with_items:
+        - { src: "{{ tmp_dir }}/etcd-v3.2.6-linux-amd64/etcd", dest: /usr/local/bin/etcd }
+        - { src: "{{ tmp_dir }}/etcd-v3.2.6-linux-amd64/etcdctl", dest: /usr/local/bin/etcdctl }
