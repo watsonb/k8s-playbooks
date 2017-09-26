@@ -349,13 +349,52 @@
       shell: /usr/local/bin/kubectl {{ item.cmd }}
       args:
         chdir: "{{ ca_dir }}"
-        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
+        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig.lock"
       become: true
       with_items:
         - { cmd: "config set-cluster {{ gcp_net_name }} --certificate-authority=ca.pem --embed-certs=true --server=https://{{ gcp_net_static_ip }}:6443 --kubeconfig={{ inventory_hostname }}.kubeconfig" }
         - { cmd: "config set-credentials system:node:{{ inventory_hostname }} --client-certificate={{ inventory_hostname }}.pem --client-key={{ inventory_hostname }}-key.pem --embed-certs=true --kubeconfig={{ inventory_hostname }}.kubeconfig" }
         - { cmd: "config set-context default --cluster={{ gcp_net_name }} --user=system:node:{{ inventory_hostname }} --kubeconfig={{ inventory_hostname }}.kubeconfig" }
         - { cmd: "config use-context default --kubeconfig={{ inventory_hostname }}.kubeconfig" }
+      tags:
+        - worker_kube_config
+        
+    - name: FILE | touch a lock file to prevent worker kube config again
+      delegate_to: 127.0.0.1
+      file:
+        path: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig.lock"
+        state: touch
+        owner: root
+        group: root
+      become: true
+      tags:
+        - worker_kube_config
+        
+    - name: SHELL | Generate worker kube proxy config
+      delegate_to: 127.0.0.1
+      run_once: true
+      shell: /usr/local/bin/kubectl {{ item.cmd }}
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/kube-proxy.kubeconfig.lock"
+      become: true
+      with_items:
+        - { cmd: "config set-cluster {{ gcp_net_name }} --certificate-authority=ca.pem --embed-certs=true --server=https://{{ gcp_net_static_ip }}:6443 --kubeconfig=kube-proxy.kubeconfig" }
+        - { cmd: "config set-credentials kube-proxy --client-certificate=kube-proxy.pem --client-key=kube-proxy-key.pem --embed-certs=true --kubeconfig=kube-proxy.kubeconfig" }
+        - { cmd: "config set-context default --cluster={{ gcp_net_name }} --user=kube-proxy --kubeconfig=kube-proxy.kubeconfig" }
+        - { cmd: "config use-context default --kubeconfig=kube-proxy.kubeconfig" }
+      tags:
+        - worker_kube_config
+        
+    - name: FILE | touch a lock file to prevent worker kube proxy config again
+      delegate_to: 127.0.0.1
+      run_once: true
+      file:
+        path: "{{ ca_dir }}/kube-proxy.kubeconfig.lock"
+        state: touch
+        owner: root
+        group: root
+      become: true
       tags:
         - worker_kube_config
         
@@ -373,14 +412,29 @@
     # define/include any "task-level" tasks here
     ###########
     
+    - name: FILE | Ensure destination directory exists for CA files
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_dir
+    
     - name: COPY | Copy appropriate cert files to workers
       copy:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
+      become: true
       with_items:
-        - { src: "{{ ca_dir }}/ca.pem", dest: "~/" }
-        - { src: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem", dest: "~/" }
-        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.pem", dest: "~/" }
+        - { src: "{{ ca_dir }}/ca.pem", dest: "{{ ca_dir }}/ca.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem", dest: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.pem", dest: "~/{{ inventory_hostname }}.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig", dest: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig" }
+        - { src: "{{ ca_dir }}/kube-proxy.kubeconfig", dest: "{{ ca_dir }}/kube-proxy.kubeconfig" }
+      tags:
+        - worker_cert_dist
         
 #################################################
 # Play to distribute certs to controllers
@@ -396,12 +450,25 @@
     # define/include any "task-level" tasks here
     ###########
     
+    - name: FILE | Ensure destination directory exists for CA files
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_dir
+    
     - name: COPY | Copy appropriate cert files to controllers
       copy:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
+      become: true
       with_items:
-        - { src: "{{ ca_dir }}/ca.pem", dest: "~/" }
-        - { src: "{{ ca_dir }}/ca-key.pem", dest: "~/" }
-        - { src: "{{ ca_dir }}/kubernetes-key.pem", dest: "~/" }
-        - { src: "{{ ca_dir }}/kubernetes.pem", dest: "~/" }
+        - { src: "{{ ca_dir }}/ca.pem", dest: "{{ ca_dir }}/ca.pem" }
+        - { src: "{{ ca_dir }}/ca-key.pem", dest: "{{ ca_dir }}/ca-key.pem" }
+        - { src: "{{ ca_dir }}/kubernetes-key.pem", dest: "{{ ca_dir }}/kubernetes-key.pem" }
+        - { src: "{{ ca_dir }}/kubernetes.pem", dest: "{{ ca_dir }}/kubernetes.pem" }
+      tags:
+        - controller_cert_dist
