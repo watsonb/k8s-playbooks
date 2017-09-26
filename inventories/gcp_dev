@@ -23,7 +23,7 @@ ansible-centos7
 
 [k8s-controllers]
 dev-controller-0
-#dev-controller-1
+dev-controller-1
 #dev-controller-2
 
 [k8s-workers]
