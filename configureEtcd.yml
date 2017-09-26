@@ -134,6 +134,27 @@
       become: true
       tags:
         - etcd_svc
+        
+    - name: SERVICE | Enable and stop the etcd service
+      service:
+        name: etcd.service
+        enabled: yes
+        state: stopped
+      become: true
+      tags:
+        - etcd_svc
+        
+    - name: FILE | Ensure etcd member directory absent before svc restart
+      file:
+        path: "{{ item.dir }}"
+        state: absent
+#        owner: root
+#        group: root
+      become: true
+      tags:
+        - etcd_dirs
+      with_items:
+        - { dir: /var/lib/etcd/member/ }
       
     - name: SERVICE | Enable and start the etcd service
       service:
