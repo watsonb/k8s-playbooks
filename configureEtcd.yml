@@ -47,6 +47,7 @@
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
         remote_src: true
+        mode: 0777
       become: true
       with_items:
         - { src: "{{ tmp_dir }}/etcd-v3.2.6-linux-amd64/etcd", dest: /usr/local/bin/etcd }
