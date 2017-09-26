@@ -14,6 +14,52 @@
 # Notes:
 #   - TODO: vault the admin password
 ###################
+
+- name: PLAY | populate controller ip variables
+  hosts: k8s-controllers
+  gather_facts: false
+  vars:
+    - tmp_dir: /tmp/etcd
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    - name: SHELL | determine internal IP
+      shell: 'echo $(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)'
+      register: ret_val_ctl_int_ip
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+        
+    - debug:
+        var: ret_val_ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+        
+    - set_fact:
+        ctl_int_ip: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+        
+    - set_fact:
+        gcp_instance_internal_ip_address: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+        
+    - debug:
+        var: ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+
+
 - name: PLAY | Configure CA Authority
   hosts: ansible-controllers
   gather_facts: false
@@ -187,8 +233,14 @@
       tags:
         - kube_api_server_cer
         
+    - set_fact:
+        gcp_controller_ips: "{% for host in groups['k8s-controllers'] %}{{ hostvars[host]['gcp_instance_internal_ip_address'] }},{% endfor %}"
+      tags:
+        - kube_api_server_cer
+        
     - name: SHELL | Generate kubernetes api server cert and private key
-      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,{{ gcp_net_static_ip }},127.0.0.1,kubernetes.default -profile=kubernetes kubernetes-csr.json | /usr/local/bin/cfssljson -bare kubernetes
+#      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,{{ gcp_net_static_ip }},127.0.0.1,kubernetes.default -profile=kubernetes kubernetes-csr.json | /usr/local/bin/cfssljson -bare kubernetes
+      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=10.32.0.1,{{ gcp_controller_ips }},{{ gcp_net_static_ip }},127.0.0.1,kubernetes.default -profile=kubernetes kubernetes-csr.json | /usr/local/bin/cfssljson -bare kubernetes
       args:
         chdir: "{{ ca_dir }}"
         creates: "{{ ca_dir }}/kubernetes.pem"
