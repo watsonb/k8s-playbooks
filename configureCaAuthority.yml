@@ -420,7 +420,7 @@
         group: root
       become: true
       tags:
-        - ca_dir
+        - worker_cert_dist
     
     - name: COPY | Copy appropriate cert files to workers
       copy:
@@ -458,7 +458,7 @@
         group: root
       become: true
       tags:
-        - ca_dir
+        - controller_cert_dist
     
     - name: COPY | Copy appropriate cert files to controllers
       copy:
