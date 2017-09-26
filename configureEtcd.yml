@@ -90,28 +90,33 @@
       register: ret_val_ctl_int_ip
       tags:
         - controller_int_ip
+        - etcd_svc_def
         
     - debug:
         var: ret_val_ctl_int_ip
         verbosity: 1
       tags:
         - controller_int_ip
+        - etcd_svc_def
         
     - set_fact:
         ctl_int_ip: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
       tags:
         - controller_int_ip
+        - etcd_svc_def
         
     - set_fact:
         gcp_instance_internal_ip_address: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
       tags:
         - controller_int_ip
+        - etcd_svc_def
         
     - debug:
         var: ctl_int_ip
         verbosity: 1
       tags:
         - controller_int_ip
+        - etcd_svc_def
         
     - name: TEMPLATE | Template out the etcd service def
       template:
