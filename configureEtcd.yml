@@ -102,6 +102,11 @@
       tags:
         - controller_int_ip
         
+    - set_fact:
+        gcp_instance_internal_ip_address: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        
     - debug:
         var: ctl_int_ip
         verbosity: 1

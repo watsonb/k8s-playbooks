@@ -18,7 +18,7 @@ ExecStart=/usr/local/bin/etcd \
   --listen-client-urls https://{{ ctl_int_ip }}:2379,http://127.0.0.1:2379 \
   --advertise-client-urls https://{{ ctl_int_ip }}:2379 \
   --initial-cluster-token etcd-cluster-0 \
-  --initial-cluster {% for host in groups['k8s-controllers'] %}{{ hostvars[host]['inventory_hostname'] }}=https://{{ hostvars[host]['ctl_int_ip'] }}:2380,{% endfor %} \
+  --initial-cluster {% for host in groups['k8s-controllers'] %}{{ hostvars[host]['inventory_hostname'] }}=https://{{ hostvars[host]['gcp_instance_internal_ip_address'] }}:2380,{% endfor %} \
   --initial-cluster-state new \
   --data-dir=/var/lib/etcd
 Restart=on-failure
