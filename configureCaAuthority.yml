@@ -207,6 +207,17 @@
       become: true
       tags:
         - ansible_cert_perms
+        
+    - name: FILE | Folder permissions on Ansible controller
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+      become: true
+      tags:
+        - ansible_cert_perms
 
 #################################################
 # Play to generate worker certs
@@ -411,6 +422,7 @@
         - worker_kube_config
         
     - name: FILE | File permissions on Ansible controller
+      delegate_to: 127.0.0.1
       file:
         path: "{{ ca_dir }}"
         state: directory
@@ -418,6 +430,18 @@
         group: root
         mode: 0644
         recurse: true
+      become: true
+      tags:
+        - ansible_cert_perms
+        
+    - name: FILE | Folder permissions on Ansible controller
+      delegate_to: 127.0.0.1
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
       become: true
       tags:
         - ansible_cert_perms
