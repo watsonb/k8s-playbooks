@@ -1,0 +1,42 @@
+---
+###################
+# File:
+# playbooks/configureEtcd.yml
+#
+# Description:
+# Installs/configures an etcd cluster corresponding to instructions here:
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/07-bootstrapping-etcd.md 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: 
+###################
+- name: PLAY | Configure CA Authority
+  hosts: k8s-controllers
+#  gather_facts: false
+  vars:
+    - tmp_dir: /tmp/etcd
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: FILE | Ensure destination tmp directory exists
+      file:
+        path: "{{ tmp_dir }}"
+        state: directory
+        owner: root
+        group: root
+      become: true
+      tags:
+        - tmp_dir
+    
+    - name: UNARCHIVE | download and extract etcd
+      unarchive:
+        src: "https://github.com/coreos/etcd/releases/download/v3.2.6/etcd-v3.2.6-linux-amd64.tar.gz"
+        dest: "{{ tmp_dir }}"
+      become: true
