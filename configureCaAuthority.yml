@@ -520,3 +520,13 @@
         - { src: "{{ ca_dir }}/kubernetes.pem", dest: "{{ ca_dir }}/kubernetes.pem" }
       tags:
         - controller_cert_dist
+        
+    - name: TEMPLATE | Template out the encryption config
+      template:
+        src: encryption-config.yaml.j2
+        dest: "{{ ca_dir }}/encryption-config.yaml"
+        owner: root
+        group: root
+      become: true
+      tags:
+        - encryption_config
