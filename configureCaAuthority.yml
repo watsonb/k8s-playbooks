@@ -239,7 +239,6 @@
         - kube_api_server_cer
         
     - name: SHELL | Generate kubernetes api server cert and private key
-#      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,{{ gcp_net_static_ip }},127.0.0.1,kubernetes.default -profile=kubernetes kubernetes-csr.json | /usr/local/bin/cfssljson -bare kubernetes
       shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=10.32.0.1,{{ gcp_controller_ips }},{{ gcp_net_static_ip }},127.0.0.1,kubernetes.default -profile=kubernetes kubernetes-csr.json | /usr/local/bin/cfssljson -bare kubernetes
       args:
         chdir: "{{ ca_dir }}"
