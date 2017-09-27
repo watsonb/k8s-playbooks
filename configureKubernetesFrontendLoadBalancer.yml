@@ -175,7 +175,7 @@
         name: kubernetes-target-pool
         region: "{{ gcp_net_subnet_region }}"
         members: "{{ gcp_lb_members_list }}"
-        external_ip: "{{ gcp_pub_add }}"
+        external_ip: "{{ gcp_pub_name }}"
         state: present
         service_account_email: "{{ gcp_service_account_email }}"
         credentials_file: "{{ gcp_credentials_file }}"
