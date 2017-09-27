@@ -167,7 +167,7 @@
         - gcp_lb_members
     
     - name: Create Kubernetes Load Balancer (with health checks)
-      connection: local
+      delegate_to: 127.0.0.1
       gce_lb:
         httphealthcheck_name: kube-apiserver-health-check
         httphealthcheck_port: 8080
