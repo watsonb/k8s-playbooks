@@ -378,46 +378,6 @@
       tags:
         - worker_kube_config
         
-#    - name: SHELL | Generate worker kube config (pt 1)
-#      delegate_to: 127.0.0.1
-#      shell: /usr/local/bin/kubectl config set-cluster {{ gcp_net_name }} --certificate-authority=ca.pem --embed-certs=true --server=https://{{ gcp_net_static_ip }}:6443 --kubeconfig={{ inventory_hostname }}.kubeconfig
-#      args:
-#        chdir: "{{ ca_dir }}"
-#        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
-#      become: true
-#      tags:
-#        - worker_kube_config
-#        
-#    - name: SHELL | Generate worker kube config (pt 2)
-#      delegate_to: 127.0.0.1
-#      shell: /usr/local/bin/kubectl config set-credentials system:node:{{ inventory_hostname }} --client-certificate={{ inventory_hostname }}.pem --client-key={{ inventory_hostname }}-key.pem --embed-certs=true --kubeconfig={{ inventory_hostname }}.kubeconfig
-#      args:
-#        chdir: "{{ ca_dir }}"
-#        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
-#      become: true
-#      tags:
-#        - worker_kube_config
-#        
-#    - name: SHELL | Generate worker kube config (pt 3)
-#      delegate_to: 127.0.0.1
-#      shell: /usr/local/bin/kubectl config set-context default --cluster={{ gcp_net_name }} --user=system:node:{{ inventory_hostname }} --kubeconfig={{ inventory_hostname }}.kubeconfig
-#      args:
-#        chdir: "{{ ca_dir }}"
-#        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
-#      become: true
-#      tags:
-#        - worker_kube_config
-#        
-#    - name: SHELL | Generate worker kube config (pt 4)
-#      delegate_to: 127.0.0.1
-#      shell: /usr/local/bin/kubectl config use-context default --kubeconfig={{ inventory_hostname }}.kubeconfig
-#      args:
-#        chdir: "{{ ca_dir }}"
-#        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig"
-#      become: true
-#      tags:
-#        - worker_kube_config
-        
     - name: SHELL | Generate worker kube config
       delegate_to: 127.0.0.1
       shell: /usr/local/bin/kubectl {{ item.cmd }}
