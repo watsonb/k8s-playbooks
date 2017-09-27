@@ -189,24 +189,28 @@
       tags:
         - gcp_lb
         
-    - name: Create Kubernetes Forwarding_Rule
-      gcp_forwarding_rule:
-        forwarding_rule_name: kubernetes-forwarding-rule
-        address: "{{ gcp_ext_ip_name }}"
-        protocol: TCP
-        port_range: 6443
-        region: "{{ gcp_net_subnet_region }}"
-        target: kubernetes-target-pool
-        state: present
-        service_account_email: "{{ gcp_service_account_email }}"
-        credentials_file: "{{ gcp_credentials_file }}"
-        project_id: "{{ gcp_project_id }}"
-      tags:
-        - gcp_fr
-      register: ret_val_fr
-        
-    - debug:
-        var: ret_val_fr
-        verbosity: 1
-      tags:
-        - gcp_fr
+    #-----
+    # Note, requires Ansible 2.4, but can't get it working
+    #-----
+#    - name: Create Kubernetes Forwarding_Rule
+#      gcp_forwarding_rule:
+#        forwarding_rule_name: kubernetes-forwarding-rule
+#        address: "{{ gcp_ext_ip_name }}"
+#        protocol: TCP
+#        port_range: 6443
+#        region: "{{ gcp_net_subnet_region }}"
+#        target: kubernetes-target-pool
+#        state: present
+#        service_account_email: "{{ gcp_service_account_email }}"
+#        credentials_file: "{{ gcp_credentials_file }}"
+#        project_id: "{{ gcp_project_id }}"
+#      when: ansible_version.full >= 2.4
+#      tags:
+#        - gcp_fr
+#      register: ret_val_fr
+#        
+#    - debug:
+#        var: ret_val_fr
+#        verbosity: 1
+#      tags:
+#        - gcp_fr

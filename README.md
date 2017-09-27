@@ -5,6 +5,19 @@ manage Kubernetes.
 
 TODO: This will require some refactoring for ease of maintenance.
 
+# Prerequisites
+
+## certifi python package
+For some reason, the current version of certifi doesn't jive with Google Cloud
+Platform.  You need a specific version, like so:
+
+pip uninstall -y certifi && pip install certifi==2015.04.28
+
+## apache-libcloud
+You need apache-libcloud for Ansible GCP support:
+
+pip install apache-libcloud
+
 # Top-level playbooks
 
 Pertinent top-level playbooks are described below
