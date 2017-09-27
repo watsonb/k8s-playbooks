@@ -90,28 +90,59 @@
 #      tags:
 #        - gcp_hc
 
-    - name: SHELL | determine public address
+    - name: SHELL | determine public address (format == name)
       shell: echo $(gcloud compute addresses describe {{ gcp_net_name }} --region $(gcloud config get-value compute/region) --format 'value(name)')
+      register: ret_val_gcp_pub_name
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+      
+    - debug:
+        var: ret_val_gcp_pub_name
+        verbosity: 1
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+        
+    - set_fact:
+        gcp_pub_name: "{{ ret_val_gcp_pub_name.stdout_lines[0] }}"
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+        
+    - debug:
+        var: gcp_pub_name
+        verbosity: 1
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+        
+    - name: SHELL | determine public address (format == address)
+      shell: echo $(gcloud compute addresses describe {{ gcp_net_name }} --region $(gcloud config get-value compute/region) --format 'value(address)')
       register: ret_val_gcp_pub_add
       tags:
         - gcp_lb
+        - gcp_pub_net
       
     - debug:
         var: ret_val_gcp_pub_add
         verbosity: 1
       tags:
         - gcp_lb
+        - gcp_pub_net
         
     - set_fact:
         gcp_pub_add: "{{ ret_val_gcp_pub_add.stdout_lines[0] }}"
       tags:
         - gcp_lb
+        - gcp_pub_net
         
     - debug:
         var: gcp_pub_add
         verbosity: 1
       tags:
         - gcp_lb
+        - gcp_pub_net
         
     - set_fact:
         gcp_lb_members: '{% for host in groups["k8s-controllers"] %}"{{ gcp_zone }}/{{ hostvars[host].inventory_hostname }}",{% endfor %}'
@@ -140,8 +171,10 @@
         httphealthcheck_name: kube-apiserver-health-check
         httphealthcheck_port: 8080
         httphealthcheck_path: /healthz
+        name: kubernetes-target-pool
         region: "{{ gcp_net_subnet_region }}"
-        members: "{{ gcp_lb_members }}"
+        members: "{{ gcp_lb_members_list }}"
+        state: present
         service_account_email: "{{ gcp_service_account_email }}"
         credentials_file: "{{ gcp_credentials_file }}"
         project_id: "{{ gcp_project_id }}"
