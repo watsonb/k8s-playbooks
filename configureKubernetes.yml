@@ -38,6 +38,8 @@
         - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kube-controller-manager", dest: /usr/local/bin/kube-controller-manager }
         - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kube-scheduler", dest: /usr/local/bin/kube-scheduler }
         - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl", dest: /usr/local/bin/kubectl }
+      tags:
+        - k8s_bin
         
     - name: FILE | Ensure kubernetes directories exist
       file:
@@ -64,4 +66,71 @@
         - { src: "{{ ca_dir }}/kubernetes.pem", dest: /var/lib/kubernetes/kubernetes.pem }
         - { src: "{{ ca_dir }}/encryption-config.yaml", dest: /var/lib/kubernetes/encryption-config.yaml }
       tags:
-        - cp_etcd
+        - k8s_keys
+        
+    - name: SHELL | determine internal IP
+      shell: 'echo $(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)'
+      register: ret_val_ctl_int_ip
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - debug:
+        var: ret_val_ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - set_fact:
+        ctl_int_ip: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - set_fact:
+        gcp_instance_internal_ip_address: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - debug:
+        var: ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - name: TEMPLATE | Template out the k8s service defs
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+      become: true
+      with_items:
+        - { src: kube-apiserver.service.j2, dest: /etc/systemd/system/kube-apiserver.service }
+        - { src: kube-controller-manager.service.j2, dest: /etc/systemd/system/kube-controller-manager.service }
+        - { src: kube-scheduler.service.j2, dest: /etc/systemd/system/kube-scheduler.service }
+      tags:
+        - k8s_svc
+        - k8s_svc_def
+        
+    - name: SHELL | run daemon-reload to pick up etcd service definition
+      shell: systemctl daemon-reload
+      become: true
+      tags:
+        - k8s_svc
+        
+    - name: SERVICE | Enable and start the k8s services
+      service:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+      become: true
+      with_items:
+        - kube-apiserver
+        - kube-controller-manager
+        - kube-scheduler
+      tags:
+        - k8s_svc

@@ -1,42 +1,27 @@
-# playbooks
+# k8s-playbooks
 
 This directory contains Ansible playbooks used to deploy and configuration
-manage TBD...
+manage Kubernetes.
+
+TODO: This will require some refactoring for ease of maintenance.
 
 # Top-level playbooks
 
 Pertinent top-level playbooks are described below
 
-## provisionSystem.yml
+## provisionGcPEnvironment.yml
 
-This is the main provisioning playbook that includes several other playbooks to
-configuration-manage various Virtual Machines (VMs).  You typically run the
-playbook as follows:
-
-    ansible-playbook -i playbooks/inventory/<file> playbooks/provisionSystem.yml --ask-vault-pass
-    
-Where <file> is a particular inventory file.  More on inventories in the next
-section.
-
-The --ask-vault-pass switch will cause Ansible to interactively prompt you to
-supply the password to the Ansible vault.  The vault contains sensitive
-information (e.g. passwords) and the playbook cannot be run without the vault.
-
-If you've secured the password in a text file (e.g. in a place only readable by
-the ansible user), then you can run the command like this (e.g. in Jenkins):
-
-    ansible-playbook -i playbooks/inventory/<file> playbooks/provisionSystem.yml --vault-password-file /path/to/password_file.txt
+This playbook ensures Virtual Machines are up and running on Google Cloud
+Platform.  Currently this is tied to Ben Watson's personal GCP (free trial)
+account.  Update environment-level group_vars and files to "point" to other
+GCP accounts if necessary.
 
 # Inventories
 
-We define several inventories for different environments/purposes.  Ben Watson
-typically uses the inventories/ece and inventories/omaha files for developing
-Ansible playbooks locally (in Omaha).  Other inventories exist for other
-environments and define environment-specific groups within them for the sake
-of variable substitution (see below).  For example, the inventories/azure_int
-file is designated for the Integration environment in Microsoft's Azure GovCloud
-and defines a group named integration-environment for the sake of defining
-variable values specific to that environment.
+We define several inventories for different environments/purposes.  The
+development environment is currently defined as Ben Watson's personal GCP
+account which runs several VMs to run a Kubernetes cluster.  Other environments
+can be defined in other inventories.
 
 # Variables
 
