@@ -174,6 +174,7 @@
         name: kubernetes-target-pool
         region: "{{ gcp_net_subnet_region }}"
         members: "{{ gcp_lb_members_list }}"
+        external_ip: "{{ gcp_pub_add }}"
         state: present
         service_account_email: "{{ gcp_service_account_email }}"
         credentials_file: "{{ gcp_credentials_file }}"
@@ -187,3 +188,25 @@
         verbosity: 1
       tags:
         - gcp_lb
+        
+    - name: Create Kubernetes Forwarding_Rule
+      gcp_forwarding_rule:
+        forwarding_rule_name: kubernetes-forwarding-rule
+        address: "{{ gcp_ext_ip_name }}"
+        protocol: TCP
+        port_range: 6443
+        region: "{{ gcp_net_subnet_region }}"
+        target: kubernetes-target-pool
+        state: present
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      tags:
+        - gcp_fr
+      register: ret_val_fr
+        
+    - debug:
+        var: ret_val_fr
+        verbosity: 1
+      tags:
+        - gcp_fr
