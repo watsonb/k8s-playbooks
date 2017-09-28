@@ -1,0 +1,84 @@
+---
+###################
+# File:
+# playbooks/configureKubernetesWorkers.yml
+#
+# Description:
+# Sets up Kubernetes workers according to instructions here:
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/09-bootstrapping-kubernetes-workers.md 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+
+- name: PLAY | configure Kubernetes workers
+  hosts: k8s-workers
+  gather_facts: false
+  vars:
+    - tmp_dir: /tmp/etcd
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: YUM | install needed packaged
+      yum:
+        name: "{{ item }}"
+        state: present
+      become: true
+      with_items:
+        - gpgme
+        - socat
+        - ostree
+      tags:
+        - k8s_bin
+        
+    - name: FILE | create necessary directories
+      file:
+        path: "{{ item }}"
+        state: directory
+      become: true
+      with_items:
+        - /etc/containers
+        - /etc/cni/net.d
+        - /etc/crio
+        - /opt/cni/bin
+        - /usr/local/libexec/crio
+        - /var/lib/kubelet
+        - /var/lib/kube-proxy
+        - /var/lib/kubernetes
+        - /var/run/kubernetes
+      tags:
+        - k8s_bin
+        
+    - name: GET_URL | Fetch Kubernetes and runc binaries
+      get_url:
+        url: "{{ item.url }}"
+        dest: "{{ item.dest }}"
+        mode: 0777
+      become: true
+      with_items:
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl", dest: /usr/local/bin/kubectl }
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kube-proxy", dest: /usr/local/bin/kube-proxy }
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubelet", dest: /usr/local/bin/kubelet }
+        - { url: "https://github.com/opencontainers/runc/releases/download/v1.0.0-rc4/runc.amd64", dest: /usr/local/bin/runc
+      tags:
+        - k8s_bin
+        
+    - name: UNARCHIVE | download and extract etcd
+      unarchive:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+      become: true
+      with_items:
+        - { src: "https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz", dest: /opt/cni/bin/ }
+        - { src: "https://storage.googleapis.com/kubernetes-the-hard-way/crio-amd64-v1.0.0-beta.0.tar.gz", dest: "{{ tmp_dir }}" }
+      tags:
+        - k8s_bin
