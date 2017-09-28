@@ -489,7 +489,7 @@
       with_items:
         - { src: "{{ ca_dir }}/ca.pem", dest: "{{ ca_dir }}/ca.pem" }
         - { src: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem", dest: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem" }
-        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.pem", dest: "~/{{ inventory_hostname }}.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.pem", dest: "{{ ca_dir }}/{{ inventory_hostname }}.pem" }
         - { src: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig", dest: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig" }
         - { src: "{{ ca_dir }}/kube-proxy.kubeconfig", dest: "{{ ca_dir }}/kube-proxy.kubeconfig" }
       tags:

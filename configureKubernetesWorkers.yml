@@ -99,3 +99,78 @@
         - { src: /tmp/crio/kpod, dest: /usr/local/bin/kpod }
       tags:
         - k8s_bin
+        
+    - name: TEMPLATE | Template out the network configs
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+      become: true
+      with_items:
+        - { src: 10-bridge.conf.j2, dest: /etc/cni/net.d/10-bridge.conf }
+        - { src: 99-loopback.conf.j2, dest: /etc/cni/net.d/99-loopback.conf }
+      tags:
+        - k8s_worker_net_conf
+        
+    - name: COPY | copy crio conf to destinations
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+#        mode: 0777
+      become: true
+      with_items:
+        - { src: /tmp/crio/crio.conf, dest: /etc/crio/crio.conf }
+        - { src: /tmp/crio/seccomp.json, dest: /etc/crio/seccomp.json }
+        - { src: /tmp/crio/policy.json, dest: /etc/containers/policy.json }
+      tags:
+        - k8s_crio_conf
+        
+    - name: TEMPLATE | Template out the service defs
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+      become: true
+      with_items:
+        - { src: crio.service.j2, dest: /etc/systemd/system/crio.service }
+        - { src: kubelet.service.j2, dest: /etc/systemd/system/kubelet.service }
+        - { src: kube-proxy.service.j2, dest: /etc/systemd/system/kube-proxy.service }
+      tags:
+        - k8s_worker_svc_defs
+        
+    - name: COPY | copy certs to destinations
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+      become: true
+      with_items:
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem", dest: "/var/lib/kubelet/{{ inventory_hostname }}-key.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.pem", dest: "/var/lib/kubelet/{{ inventory_hostname }}.pem" }
+        - { src: "{{ ca_dir }}/ca.pem", dest: "/var/lib/kubernetes/ca.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig", dest: "/var/lib/kubelet/kubeconfig" }
+        - { src: "{{ ca_dir }}/kube-proxy.kubeconfig", dest: "/var/lib/kube-proxy/kubeconfig" }
+      tags:
+        - k8s_worker_certs
+        
+    - name: SHELL | run daemon-reload to pick up etcd service definition
+      shell: systemctl daemon-reload
+      become: true
+      tags:
+        - k8s_svc
+        
+    - name: SERVICE | Enable and start the k8s services
+      service:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+      become: true
+      with_items:
+        - crio
+        - kubelet
+        - kube-proxy
+      tags:
+        - k8s_svc
