@@ -21,7 +21,7 @@ ExecStart=/usr/local/bin/kubelet \
   --require-kubeconfig \
   --runtime-request-timeout=10m \
   --tls-cert-file=/var/lib/kubelet/{{ inventory_hostname }}.pem \
-  --tls-private-key-file=/var/lib/kubelet/${HOSTNAME}-key.pem \
+  --tls-private-key-file=/var/lib/kubelet/{{ inventory_hostname }}-key.pem \
   --v=2
 Restart=on-failure
 RestartSec=5
