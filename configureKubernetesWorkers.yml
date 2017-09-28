@@ -156,6 +156,25 @@
       tags:
         - k8s_worker_certs
         
+    - name: FILE | create a symlink for libdevmapper
+      file:
+        src: /lib64/libdevmapper.so.1.02
+        dest: /lib64/libdevmapper.so.1.02.1
+        state: link
+      register: ret_val_lib
+      become: true
+      tags:
+        - k8s_lib
+        - k8s_svc
+      
+    - name: SHELL | run ldconfig
+      shell: ldconfig
+      become: true
+      when: ret_val_lib.changed
+      tags:
+        - k8s_lib
+        - k8s_svc
+        
     - name: SHELL | run daemon-reload to pick up etcd service definition
       shell: systemctl daemon-reload
       become: true
@@ -166,7 +185,7 @@
       service:
         name: "{{ item }}"
         enabled: yes
-        state: started
+        state: restarted
       become: true
       with_items:
         - crio
