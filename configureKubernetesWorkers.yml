@@ -19,7 +19,7 @@
   hosts: k8s-workers
   gather_facts: false
   vars:
-    - tmp_dir: /tmp/etcd
+    - tmp_dir: /tmp/crio
     - ca_dir: /opt/k8s-ca
   tasks:
   
@@ -54,6 +54,7 @@
         - /var/lib/kube-proxy
         - /var/lib/kubernetes
         - /var/run/kubernetes
+        - "{{ tmp_dir }}"
       tags:
         - k8s_bin
         
