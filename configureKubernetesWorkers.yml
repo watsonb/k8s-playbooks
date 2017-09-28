@@ -27,7 +27,7 @@
     # define/include any "task-level" tasks here
     ###########
     
-    - name: YUM | install needed packaged
+    - name: YUM | install needed packages
       yum:
         name: "{{ item }}"
         state: present
@@ -72,7 +72,7 @@
       tags:
         - k8s_bin
         
-    - name: UNARCHIVE | download and extract etcd
+    - name: UNARCHIVE | download and extract cni and crio
       unarchive:
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
@@ -81,5 +81,20 @@
       with_items:
         - { src: "https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz", dest: /opt/cni/bin/ }
         - { src: "https://storage.googleapis.com/kubernetes-the-hard-way/crio-amd64-v1.0.0-beta.0.tar.gz", dest: "{{ tmp_dir }}" }
+      tags:
+        - k8s_bin
+        
+    - name: COPY | copy crio binaries to destinations
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+      become: true
+      with_items:
+        - { src: /tmp/crio/conmon, dest: /usr/local/libexec/crio/conmon }
+        - { src: /tmp/crio/pause, dest: /usr/local/libexec/crio/pause }
+        - { src: /tmp/crio/crio, dest: /usr/local/bin/crio }
+        - { src: /tmp/crio/crioctl, dest: /usr/local/bin/crioctl }
+        - { src: /tmp/crio/kpod, dest: /usr/local/bin/kpod }
       tags:
         - k8s_bin
