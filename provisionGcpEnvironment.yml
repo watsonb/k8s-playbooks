@@ -153,11 +153,12 @@
         
     - name: WAIT_FOR | Wait for SSH (port 22) on GCP VMs
       wait_for:
-        delay: 30
-        host: "{{ gce_inst_pub_ip }}"
+        delay: 60
+#        host: "{{ gce_inst_pub_ip }}"
+        host: "{{ inventory_hostname }}"
         port: 22
         state: started
-        timeout: 120
+        timeout: 240
       
       
     #~~~~~~~~~~

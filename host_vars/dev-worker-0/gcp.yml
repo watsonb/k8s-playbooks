@@ -1,7 +1,7 @@
 ---
 
 #==========
-# dev-controller-0
+# dev-worker-0
 #==========
 gcp_instance_name: "{{ inventory_hostname }}"
 gcp_machine_type: n1-standard-1
@@ -16,3 +16,4 @@ gcp_ip_forward: true
 gcp_startup_script: cat >> /etc/sudoers <<EOF ansible ALL=(ALL)     NOPASSWD:ALL EOF
 gcp_metadata: '{ "pod-cidr" : "10.200.0.0/24" }'
 gcp_instance_internal_ip_address: foo
+gcp_worker_pod_cidr: bar

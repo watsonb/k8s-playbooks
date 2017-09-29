@@ -100,6 +100,29 @@
       tags:
         - k8s_bin
         
+    - name: SHELL | determine worker POD CIDR from attribute added to VM at create time
+      shell: 'echo $(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/pod-cidr)'
+      register: ret_val_worker_pod_cidr
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: ret_val_worker_pod_cidr
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - set_fact:
+        gcp_worker_pod_cidr: "{{ ret_val_worker_pod_cidr.stdout_lines[0] }}"
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: gcp_worker_pod_cidr
+        verbosity: 1
+      tags:
+        - worker_cer
+        
     - name: TEMPLATE | Template out the network configs
       template:
         src: "{{ item.src }}"
