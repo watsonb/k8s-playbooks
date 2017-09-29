@@ -53,7 +53,7 @@
         
     - name: SHELL | determine POD CIDR range
       delegate_to: 127.0.0.1
-      shell: echo $(gcloud compute instances describe {{ inventory_hostname }} --format 'value(metadata.items[0].value)')
+      shell: echo $(gcloud compute instances describe {{ inventory_hostname }} --format 'value(metadata.items[1].value)')
       register: ret_val_gcp_pod_cidr
       tags:
         - worker_int_ip
