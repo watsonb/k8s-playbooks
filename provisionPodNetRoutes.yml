@@ -51,26 +51,25 @@
       tags:
         - worker_int_ip
         
-    - name: SHELL | determine POD CIDR range
-      delegate_to: 127.0.0.1
-      shell: echo $(gcloud compute instances describe {{ inventory_hostname }} --format 'value(metadata.items[1].value)')
-      register: ret_val_gcp_pod_cidr
+    - name: SHELL | determine worker POD CIDR from attribute added to VM at create time
+      shell: 'echo $(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/pod-cidr)'
+      register: ret_val_worker_pod_cidr
       tags:
-        - worker_int_ip
+        - worker_cer
         
     - debug:
-        var: ret_val_gcp_pod_cidr
+        var: ret_val_worker_pod_cidr
         verbosity: 1
       tags:
-        - worker_int_ip
+        - worker_cer
         
     - set_fact:
-        gcp_inst_pod_cidr: "{{ ret_val_gcp_pod_cidr.stdout_lines[0] }}"
+        gcp_worker_pod_cidr: "{{ ret_val_worker_pod_cidr.stdout_lines[0] }}"
       tags:
-        - worker_int_ip
+        - worker_cer
         
     - debug:
-        var: gcp_inst_pod_cidr
+        var: gcp_worker_pod_cidr
         verbosity: 1
       tags:
-        - worker_int_ip
+        - worker_cer
