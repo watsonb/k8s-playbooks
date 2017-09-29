@@ -114,7 +114,7 @@
         subnetwork: "{{ gcp_subnetwork }}"
         preemptible: "{{ gcp_preemptible }}"
         ip_forward: "{{ gcp_ip_forward }}"
-        metadata : '{ "startup-script" : "{{ gcp_startup_script }}" }'
+        metadata: "{{ gcp_metadata }}"
         service_account_email: "{{ gcp_service_account_email }}"
         credentials_file: "{{ gcp_credentials_file }}"
         project_id: "{{ gcp_project_id }}"

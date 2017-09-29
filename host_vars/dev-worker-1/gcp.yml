@@ -14,4 +14,5 @@ gcp_subnetwork: "{{ gcp_net_subnet_name }}"
 gcp_preemptible: false
 gcp_ip_forward: true
 gcp_startup_script: cat >> /etc/sudoers <<EOF ansible ALL=(ALL)     NOPASSWD:ALL EOF
+gcp_metadata: '{ "pod-cidr" : "10.200.1.0/24" }'
 gcp_instance_internal_ip_address: foo
