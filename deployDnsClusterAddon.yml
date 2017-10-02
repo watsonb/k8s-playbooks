@@ -59,6 +59,8 @@
       delegate_to: 127.0.0.1
       shell: /usr/local/bin/kubectl run busybox --image=busybox --command -- sleep 3600
       register: ret_val_bb
+      changed_when: '"created" in ret_val_bb.stdout'
+      failed_when: 'ret_val_bb.rc != 0 and (ret_val_bb.rc == 1 and "already exists" not in ret_val_bb.stderr)'
       tags:
         - kubectl_dns_verify
       
