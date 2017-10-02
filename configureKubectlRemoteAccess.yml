@@ -18,9 +18,6 @@
 - name: PLAY | configure Kubectl remote access
   hosts: ansible-controllers
   gather_facts: false
-  vars:
-    - tmp_dir: /tmp/etcd
-    - ca_dir: /opt/k8s-ca
   tasks:
   
     ###########
@@ -55,8 +52,6 @@
       shell: /usr/local/bin/kubectl {{ item.cmd }}
       args:
         chdir: "{{ ca_dir }}"
-#        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig.lock"
-#      become: true
       with_items:
         - { cmd: "config set-cluster {{ gcp_net_name }} --certificate-authority=ca.pem --embed-certs=true --server=https://{{ gcp_net_static_ip }}:6443" }
         - { cmd: "config set-credentials admin --client-certificate=admin.pem --client-key=admin-key.pem" }

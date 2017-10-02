@@ -53,3 +53,9 @@
 
 #
 - include: provisionPodNetRoutes.yml
+
+#
+- include: deployDnsClusterAddon.yml
+
+#
+- include: smokeTest.yml
