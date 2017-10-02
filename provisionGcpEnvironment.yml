@@ -152,8 +152,9 @@
         - gcp_vm
         
     - name: WAIT_FOR | Wait for SSH (port 22) on GCP VMs
+      delegate_to: 127.0.0.1
       wait_for:
-        delay: 60
+        delay: 20
 #        host: "{{ gce_inst_pub_ip }}"
         host: "{{ inventory_hostname }}"
         port: 22
