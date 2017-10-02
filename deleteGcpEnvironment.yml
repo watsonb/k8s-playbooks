@@ -108,13 +108,24 @@
       tags:
         - gcp_lb
         - gcp_pub_net
+        
+    - name: Create Minimum HealthCheck
+      delegate_to: 127.0.0.1
+      run_once: true
+      gcp_healthcheck:
+        healthcheck_name: kube-apiserver-health-check
+        healthcheck_type: HTTP
+        state: absent
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
     
     - name: delete Kubernetes Load Balancer
       delegate_to: 127.0.0.1
       gce_lb:
-        httphealthcheck_name: kube-apiserver-health-check
-        httphealthcheck_port: 8080
-        httphealthcheck_path: /healthz
+#        httphealthcheck_name: kube-apiserver-health-check
+#        httphealthcheck_port: 8080
+#        httphealthcheck_path: /healthz
         name: kubernetes-target-pool
         region: "{{ gcp_net_subnet_region }}"
 #        members: "{{ gcp_lb_members_list }}"
