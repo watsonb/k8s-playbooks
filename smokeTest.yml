@@ -77,6 +77,9 @@
       failed_when: 'ret_val_nginx.rc != 0 and (ret_val_nginx.rc == 1 and "already exists" not in ret_val_nginx.stderr)'
       tags:
         - smoke_nginx
+        
+    - pause:
+        seconds: 30
       
     - debug:
         var: ret_val_nginx
@@ -109,6 +112,9 @@
         verbosity: 1
       tags:
         - smoke_nginx
+        
+    - pause:
+        seconds: 30
         
     - name: SHELL | VERIFICATION | get nginx pod logs
       delegate_to: 127.0.0.1

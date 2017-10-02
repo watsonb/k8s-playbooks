@@ -67,6 +67,9 @@
       tags:
         - kubectl_dns_verify
         
+    - pause:
+        seconds: 30
+        
     - name: SHELL | VERIFICATION | list the busybox deployment
       delegate_to: 127.0.0.1
       shell: /usr/local/bin/kubectl get pods -l run=busybox
@@ -93,10 +96,14 @@
       tags:
         - kubectl_dns_verify
         
+    - pause:
+        seconds: 30
+        
     - name: SHELL | VERIFICATION | execute a DNS lookup for kubernetes service inside busybox pod
       delegate_to: 127.0.0.1
       shell: /usr/local/bin/kubectl exec -ti {{ ret_val_bb_fn.stdout }} -- nslookup kubernetes
       register: ret_val_bb_dns
+      ignore_errors: true
       tags:
         - kubectl_dns_verify
       
