@@ -73,3 +73,15 @@
         verbosity: 1
       tags:
         - worker_cer
+        
+    - name: SHELL | use gcloud to create route
+      shell: gcloud compute routes create kubernetes-route-{{ inventory_hostname }} --netework {{ gcp_net_name }} --next-hop-address {{ gcp_inst_int_ip }} --destination-range {{ gcp_worker_pod_cidr }}
+      register: ret_val_route
+      tags:
+        - worker_routes
+        
+    - debug:
+        var: ret_val_route
+        verbosity: 1
+      tags:
+        - worker_routes
