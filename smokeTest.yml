@@ -28,8 +28,8 @@
       delegate_to: 127.0.0.1
       shell: /usr/local/bin/kubectl create secret generic k8s-thw --from-literal="mykey=mydata"
       register: ret_val_smoke_secret
-#      changed_when: '"created" in ret_val_dns_create.stdout'
-#      failed_when: 'ret_val_dns_create.rc != 0 and (ret_val_dns_create.rc == 1 and "already exists" not in ret_val_dns_create.stderr)'
+      changed_when: '"created" in ret_val_smoke_secret.stdout'
+      failed_when: 'ret_val_smoke_secret.rc != 0 and (ret_val_smoke_secret.rc == 1 and "already exists" not in ret_val_smoke_secret.stderr)'
       tags:
         - smoke_secret
       
@@ -49,7 +49,7 @@
     ###########
     
     - name: SHELL | create a generic secret
-      shell: ETCDCTL_API=3 etcdctl get /registry/secrets/default/kubernetes-the-hard-way | hexdump -C
+      shell: ETCDCTL_API=3 etcdctl get /registry/secrets/default/k8s-thw | hexdump -C
       register: ret_val_smoke_secret_cont
       tags:
         - smoke_secret
