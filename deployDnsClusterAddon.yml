@@ -94,7 +94,7 @@
         
     - name: SHELL | VERIFICATION | execute a DNS lookup for kubernetes service inside busybox pod
       delegate_to: 127.0.0.1
-      shell: /usr/local/bin/kubectl exec -ti {{ ret_val_bb_fn }} -- nslookup kubernetes
+      shell: /usr/local/bin/kubectl exec -ti {{ ret_val_bb_fn.stdout }} -- nslookup kubernetes
       register: ret_val_bb_dns
       tags:
         - kubectl_dns_verify
