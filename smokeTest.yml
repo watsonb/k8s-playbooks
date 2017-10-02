@@ -109,3 +109,29 @@
         verbosity: 1
       tags:
         - smoke_nginx
+        
+    - name: SHELL | VERIFICATION | get nginx pod logs
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl logs {{ ret_val_nginx_get_full.stdout }}
+      register: ret_val_nginx_get_logs
+      tags:
+        - smoke_nginx
+      
+    - debug:
+        var: ret_val_nginx_get_logs
+        verbosity: 1
+      tags:
+        - smoke_nginx
+       
+    - name: SHELL | VERIFICATION | execute a command in a container
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl exec -ti {{ ret_val_nginx_get_full.stdout }} -- nginx -v
+      register: ret_val_nginx_get_version
+      tags:
+        - smoke_nginx
+      
+    - debug:
+        var: ret_val_nginx_get_version
+        verbosity: 1
+      tags:
+        - smoke_nginx
