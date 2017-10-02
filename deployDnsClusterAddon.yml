@@ -31,6 +31,8 @@
       delegate_to: 127.0.0.1
       shell: /usr/local/bin/kubectl create -f https://storage.googleapis.com/kubernetes-the-hard-way/kube-dns.yaml
       register: ret_val_dns_create
+      changed_when: '"created" in ret_val_dns_create.stdout'
+      failed_when: 'ret_val_dns_create.rc != 0 and (ret_val_dns_create.rc == 1 and "already exists" not in ret_val_dns_create.stderr)'
       tags:
         - kubectl_dns
       
