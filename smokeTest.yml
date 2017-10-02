@@ -59,3 +59,53 @@
         verbosity: 1
       tags:
         - smoke_secret
+        
+- name: PLAY | Kubernetes smoke test | NGinx deployment
+  hosts: ansible-controllers
+  gather_facts: false
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: SHELL | VERIFICATION | create a nginx deployment
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl run nginx --image=nginx
+      register: ret_val_nginx
+      changed_when: '"created" in ret_val_nginx.stdout'
+      failed_when: 'ret_val_nginx.rc != 0 and (ret_val_nginx.rc == 1 and "already exists" not in ret_val_nginx.stderr)'
+      tags:
+        - smoke_nginx
+      
+    - debug:
+        var: ret_val_nginx
+        verbosity: 1
+      tags:
+        - smoke_nginx
+        
+    - name: SHELL | VERIFICATION | list pod created via nginx deployment
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl get pods -l run=nginx
+      register: ret_val_nginx_get
+      tags:
+        - smoke_nginx
+      
+    - debug:
+        var: ret_val_nginx_get
+        verbosity: 1
+      tags:
+        - smoke_nginx
+        
+    - name: SHELL | VERIFICATION | retrieve full name of nginx pod
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl get pods -l run=nginx -o jsonpath="{.items[0].metadata.name}"
+      register: ret_val_nginx_get_full
+      tags:
+        - smoke_nginx
+      
+    - debug:
+        var: ret_val_nginx_get_full
+        verbosity: 1
+      tags:
+        - smoke_nginx
