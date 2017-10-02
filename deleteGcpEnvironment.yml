@@ -79,6 +79,7 @@
     # These tasks will be run once per "environment"
     #~~~~~~~~~~
     - name: SHELL | determine public address (format == name)
+      delegate_to: 127.0.0.1
       run_once: true
       shell: echo $(gcloud compute addresses describe {{ gcp_net_name }} --region $(gcloud config get-value compute/region) --format 'value(name)')
       register: ret_val_gcp_pub_name
