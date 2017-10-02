@@ -18,6 +18,9 @@
 - name: PLAY | configure Kubectl remote access
   hosts: ansible-controllers
   gather_facts: false
+  vars:
+    - tmp_dir: /tmp/etcd
+    - ca_dir: /opt/k8s-ca
   tasks:
   
     ###########
