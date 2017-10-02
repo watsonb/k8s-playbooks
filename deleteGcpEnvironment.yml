@@ -117,7 +117,7 @@
         httphealthcheck_path: /healthz
         name: kubernetes-target-pool
         region: "{{ gcp_net_subnet_region }}"
-        members: "{{ gcp_lb_members_list }}"
+#        members: "{{ gcp_lb_members_list }}"
         external_ip: "{{ gcp_pub_name }}"
         state: absent
         service_account_email: "{{ gcp_service_account_email }}"
