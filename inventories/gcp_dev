@@ -28,7 +28,7 @@ dev-controller-1
 
 [k8s-workers]
 dev-worker-0
-#dev-worker-1
+dev-worker-1
 #dev-worker-2
 
 [binary-repo-servers]
