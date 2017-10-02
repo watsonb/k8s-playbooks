@@ -203,3 +203,23 @@
       run_once: true
       tags:
         - gcp_network
+        
+- name: PLAY | Delete certificate stuff on Ansible controller 
+  hosts: ansible-controllers
+  gather_facts: false
+  vars:
+    - tmp_dir: /tmp/etcd
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: FILE | Ensure CA files directory is deleted on Ansible controller
+      file:
+        path: "{{ ca_dir }}"
+        state: absent
+      become: true
+      tags:
+        - ca_dir
