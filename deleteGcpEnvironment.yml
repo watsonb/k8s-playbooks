@@ -16,8 +16,8 @@
 - name: PLAY | Delete GCP 
   hosts: ["gcp-environment:!ansible-controllers"]
   gather_facts: false
-#  vars_files:
-#    - vars/vault.yml
+  vars_files:
+    - vars/vault.yml
   tasks:
   
     ###########

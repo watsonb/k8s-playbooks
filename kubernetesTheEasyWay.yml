@@ -17,6 +17,8 @@
 - name: PLAY | Ensure GCP Environment Exists
   hosts: ["gcp-environment:!ansible-controllers"]
   gather_facts: false
+  var_files:
+    - vars/vault.yml
   tasks:
   
     ###########
