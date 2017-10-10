@@ -1,11 +1,14 @@
 # k8s-playbooks
 
 This directory contains Ansible playbooks used to deploy and configuration
-manage Kubernetes.
+manage a Kubernetes cluster with etcd.  The basis of this work is a GitHub
+gist here: https://github.com/kelseyhightower/kubernetes-the-hard-way
 
-TODO: This will require some refactoring for ease of maintenance.
+TODO: This will require some refactoring for ease of maintenance.  That is,
+this playbook is almost entirely tasks in a series of plays vice an extensive
+use of generic roles.  You have been warned!
 
-# Prerequisites
+# Prerequisites (for your Ansible controller)
 
 ## certifi python package
 For some reason, the current version of certifi doesn't jive with Google Cloud
@@ -18,43 +21,35 @@ You need apache-libcloud for Ansible GCP support:
 
 pip install apache-libcloud
 
+## Ansible controller on GCP with gcloud
+This was all run from a Linux VM running on the Google Cloud Platform (GCP).
+The VM has Ansible v2.3 installed (as a Python virtual environment) and also
+has the Google Cloud SDK installed (providing the gcloud command-line tools).
+
 # Top-level playbooks
 
 Pertinent top-level playbooks are described below
 
-## provisionGcPEnvironment.yml
+## kubernetesTheEasyWay.yml
+This playbook is a play on words as it is named after a GitHub gist entitled
+"Kubernetes the Hard Way", which was the inspiration of this playbook.  Running
+this playbooks includes several additional top-level playbooks which provision
+GCP computes/network resources and install/configuration-manage software onto
+those resources, thus yielding a fully functional Kubernetes cluster.
 
-This playbook ensures Virtual Machines are up and running on Google Cloud
-Platform.  Currently this is tied to Ben Watson's personal GCP (free trial)
-account.  Update environment-level group_vars and files to "point" to other
-GCP accounts if necessary.
+## deleteGcPEnvironment.yml
+
+This playbook cleans up the GCP environment/account by deleting all VMs and
+network resources that were created via the kubernetesTheEasyWay playbook.
 
 # Inventories
 
-We define several inventories for different environments/purposes.  The
-development environment is currently defined as Ben Watson's personal GCP
-account which runs several VMs to run a Kubernetes cluster.  Other environments
-can be defined in other inventories.
+gcp_dev is the only inventory at the moment and defines 3 Kubernetes controllers
+and 3 workers per the "Kubernetes the Hard Way" tutorial.
 
 # Variables
 
-We make use of group_vars to define (override) various variable values based
-upon group affiliation.  Typically we group entire systems into environments
-(e.g., development, integration, test, staging, production, etc.).  This way, we
-can alter the value of variables based on the particular environment being
-managed by Ansible.  For example, development and integration environments may
-pull from the 'develop' branch of Git repositories whereas staging and 
-production environments may pull from the 'master' branch of these same Git
-repositories.
-
-Most roles have been developed to be completely self-contained and their 
-dependency on other roles have been annotated inside their respective 
-meta/main.yml files.  Moreover, most roles have sensible/sane default values
-specified, though those defaults are typically geared toward development or
-integration environments and should be adjusted accordingly (e.g. group_vars, 
-command-line, etc.) when used to build other environments.
-
-Navigate to a specific role's folder and view the README.md for more details.
+TBD
 
 # Roles
 
