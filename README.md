@@ -26,6 +26,32 @@ This was all run from a Linux VM running on the Google Cloud Platform (GCP).
 The VM has Ansible v2.3 installed (as a Python virtual environment) and also
 has the Google Cloud SDK installed (providing the gcloud command-line tools).
 
+# Prerequisites (for Google Cloud)
+
+## gcloud
+
+As mentioned above, it is assumed that you have a VM running on GCP and you
+have installed Ansible >= 2.3 on that box.  You have also installed the gcloud
+SDK on the same box and you can run gcloud commands (e.g. to list currently
+running VMs) on your GCP account.
+
+## Ansible Configuration
+
+Study the Google modules listed under the Cloud section of the Ansible docs.
+Also have a look at the setup required for authentication with Google Cloud and
+Ansible here: http://docs.ansible.com/ansible/latest/guide_gce.html.
+Specifically review the section "Calling Modules By Passing Credentials" and
+be prepared to create a new vars/vault.yml file with capable of setting the
+variables defined in group_vars:
+
+    gcp_service_account_email: "{{ vault_gcp_service_account_email }}"
+    gcp_credentials_file: "{{ vault_gcp_credentials_file }}"
+    gcp_project_id: "{{ vault_gcp_project_id }}"
+    
+That is to say, your vault should define the variables vault_* referenced above
+and set the values of those variables to values specific to your GCP account
+information.
+
 # Top-level playbooks
 
 Pertinent top-level playbooks are described below
@@ -37,15 +63,31 @@ this playbooks includes several additional top-level playbooks which provision
 GCP computes/network resources and install/configuration-manage software onto
 those resources, thus yielding a fully functional Kubernetes cluster.
 
+Run this playbook as follows:
+
+    ansible-playbook -i inventories/gcp_dev kubernetesTheEasyWay.yml --ask-vault-pass
+
 ## deleteGcPEnvironment.yml
 
 This playbook cleans up the GCP environment/account by deleting all VMs and
 network resources that were created via the kubernetesTheEasyWay playbook.
 
+Run this playbook as follows:
+
+    ansible-playbook -i inventories/gcp_dev deleteGcPEnvironment.yml --ask-vault-pass
+
 # Inventories
 
 gcp_dev is the only inventory at the moment and defines 3 Kubernetes controllers
-and 3 workers per the "Kubernetes the Hard Way" tutorial.
+and 3 workers per the "Kubernetes the Hard Way" tutorial.  The inventory also
+contains an entry for the Ansible controller itself, in this case named:
+
+    ansible-centos7
+    
+Since this machine was created manually via the GCP console/portal, the
+/etc/hosts file on the machine already had an entry for itself via GCP magic.
+If you name your Ansible controller something else when creating it on GCP,
+ensure you update the name in the inventory.
 
 # Variables
 
