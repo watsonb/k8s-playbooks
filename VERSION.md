@@ -12,3 +12,4 @@ This is the VERSION file for the k8s-playbooks repository.
 |Version|Codename|Date|
 |---|---|---|
 |0.1.0|First|2017-10-10T19:27:08+00:00| 
+|0.1.1|First|2017-10-10T21:37:08+00:00|
