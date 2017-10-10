@@ -13,8 +13,8 @@ gcp_zone: us-central1-f
 #gcp_project_id: ***REMOVED***
 
 gcp_service_account_email: "{{ vault_gcp_service_account_email }}"
-gcp_credentials_file: "{{ vault_gcp_service_account_email }}"
-gcp_project_id: "{{ vault_gcp_service_account_email }}"
+gcp_credentials_file: "{{ vault_gcp_credentials_file }}"
+gcp_project_id: "{{ vault_gcp_project_id }}"
 
 #~~~~~
 # Virtual network info
