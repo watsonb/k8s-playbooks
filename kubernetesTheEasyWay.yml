@@ -14,9 +14,11 @@
 # Notes:
 #   - TODO: vault the admin password
 ###################
-- name: PLAY | Ensure GCP Environment Exists
+- name: PLAY | Deploy k8s cluster to GCP
   hosts: ["gcp-environment:!ansible-controllers"]
   gather_facts: false
+  vars_files:
+    - vars/vault.yml
   tasks:
   
     ###########

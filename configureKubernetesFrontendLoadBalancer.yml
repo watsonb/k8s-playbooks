@@ -59,6 +59,8 @@
 - name: PLAY | configure Kubernetes Frontend Load Balancer
   hosts: ansible-controllers
   gather_facts: false
+  vars_files:
+    - vars/vault.yml
   tasks:
   
     ###########
