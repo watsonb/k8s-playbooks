@@ -1,0 +1,18 @@
+---
+
+#==========
+# dev-controller-0
+#==========
+gcp_instance_name: "{{ inventory_hostname }}"
+gcp_machine_type: n1-standard-1
+gcp_image: centos-7
+gcp_state: present
+gcp_disk_size: 100
+gcp_disk_auto_delete: true
+gcp_network: "{{ gcp_net_name }}"
+gcp_subnetwork: "{{ gcp_net_subnet_name }}"
+gcp_preemptible: false
+gcp_ip_forward: true
+gcp_startup_script: cat >> /etc/sudoers <<EOF ansible ALL=(ALL)     NOPASSWD:ALL EOF
+gcp_metadata: '{ "startup-script" : "{{ gcp_startup_script }}" }'
+gcp_instance_internal_ip_address: foo

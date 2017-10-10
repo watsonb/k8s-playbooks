@@ -1,0 +1,217 @@
+---
+###################
+# File:
+# playbooks/configureKubernetesFrontendLoadBalancer.yml
+#
+# Description:
+# Sets up Kubernetes controllers according to instructions here:
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/08-bootstrapping-kubernetes-controllers.md 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+
+- name: PLAY | Gather k8s controller facts
+  hosts: k8s-controllers
+  gather_facts: true
+  vars:
+    - tmp_dir: /tmp/etcd
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    - name: SHELL | determine internal IP
+      shell: 'echo $(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)'
+      register: ret_val_ctl_int_ip
+      tags:
+        - controller_int_ip
+        
+    - debug:
+        var: ret_val_ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        
+    - set_fact:
+        ctl_int_ip: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        
+    - set_fact:
+        gcp_instance_internal_ip_address: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        
+    - debug:
+        var: ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        
+
+
+- name: PLAY | configure Kubernetes Frontend Load Balancer
+  hosts: ansible-controllers
+  gather_facts: false
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+#    - name: Create Kubernetes API server health check
+#      gcp_healthcheck:
+#        healthcheck_name: kube-apiserver-health-check
+#        healthcheck_type: HTTP
+#        port: 8080
+##        host: my-host
+#        request_path: /healthz
+##        check_interval: 10
+##        timeout: 30
+##        unhealthy_threshhold: 2
+##        healthy_threshhold: 1
+#        state: present
+#        service_account_email: "{{ gcp_service_account_email }}"
+#        credentials_file: "{{ gcp_credentials_file }}"
+#        project_id: "{{ gcp_project_id }}"
+#      tags:
+#        - gcp_hc
+#      register: ret_val_hc
+#        
+#    - debug:
+#        var: ret_val_hc
+#        verbosity: 1
+#      tags:
+#        - gcp_hc
+
+    - name: SHELL | determine public address (format == name)
+      shell: echo $(gcloud compute addresses describe {{ gcp_net_name }} --region $(gcloud config get-value compute/region) --format 'value(name)')
+      register: ret_val_gcp_pub_name
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+      
+    - debug:
+        var: ret_val_gcp_pub_name
+        verbosity: 1
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+        
+    - set_fact:
+        gcp_pub_name: "{{ ret_val_gcp_pub_name.stdout_lines[0] }}"
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+        
+    - debug:
+        var: gcp_pub_name
+        verbosity: 1
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+        
+    - name: SHELL | determine public address (format == address)
+      shell: echo $(gcloud compute addresses describe {{ gcp_net_name }} --region $(gcloud config get-value compute/region) --format 'value(address)')
+      register: ret_val_gcp_pub_add
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+      
+    - debug:
+        var: ret_val_gcp_pub_add
+        verbosity: 1
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+        
+    - set_fact:
+        gcp_pub_add: "{{ ret_val_gcp_pub_add.stdout_lines[0] }}"
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+        
+    - debug:
+        var: gcp_pub_add
+        verbosity: 1
+      tags:
+        - gcp_lb
+        - gcp_pub_net
+        
+    - set_fact:
+        gcp_lb_members: '{% for host in groups["k8s-controllers"] %}"{{ gcp_zone }}/{{ hostvars[host].inventory_hostname }}",{% endfor %}'
+      tags:
+        - gcp_lb_members
+        
+    - debug:
+        var: gcp_lb_members
+        verbosity: 1
+      tags:
+        - gcp_lb_members
+        
+    - set_fact:
+        gcp_lb_members_list: "[{{ gcp_lb_members }}]"
+      tags:
+        - gcp_lb_members
+        
+    - debug:
+        var: gcp_lb_members_list
+        verbosity: 1
+      tags:
+        - gcp_lb_members
+    
+    - name: Create Kubernetes Load Balancer (with health checks)
+      delegate_to: 127.0.0.1
+      gce_lb:
+        httphealthcheck_name: kube-apiserver-health-check
+        httphealthcheck_port: 8080
+        httphealthcheck_path: /healthz
+        name: kubernetes-target-pool
+        region: "{{ gcp_net_subnet_region }}"
+        members: "{{ gcp_lb_members_list }}"
+        external_ip: "{{ gcp_pub_name }}"
+        state: present
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      tags:
+        - gcp_lb
+      register: ret_val_lb
+        
+    - debug:
+        var: ret_val_lb
+        verbosity: 1
+      tags:
+        - gcp_lb
+        
+    #-----
+    # Note, requires Ansible 2.4, but can't get it working
+    #-----
+#    - name: Create Kubernetes Forwarding_Rule
+#      gcp_forwarding_rule:
+#        forwarding_rule_name: kubernetes-forwarding-rule
+#        address: "{{ gcp_ext_ip_name }}"
+#        protocol: TCP
+#        port_range: 6443
+#        region: "{{ gcp_net_subnet_region }}"
+#        target: kubernetes-target-pool
+#        state: present
+#        service_account_email: "{{ gcp_service_account_email }}"
+#        credentials_file: "{{ gcp_credentials_file }}"
+#        project_id: "{{ gcp_project_id }}"
+#      when: ansible_version.full >= 2.4
+#      tags:
+#        - gcp_fr
+#      register: ret_val_fr
+#        
+#    - debug:
+#        var: ret_val_fr
+#        verbosity: 1
+#      tags:
+#        - gcp_fr

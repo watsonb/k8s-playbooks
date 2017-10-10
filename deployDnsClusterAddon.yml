@@ -1,0 +1,114 @@
+---
+###################
+# File:
+# playbooks/deployDnsClusterAddon.yml
+#
+# Description:
+# Deploy the DNS add-on to provide DNS-based service discovery
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/12-dns-addon.md 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+
+- name: PLAY | deploy DNS Cluster Add-on
+  hosts: ansible-controllers
+  gather_facts: false
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: SHELL | create DNS add-on via kubectl command
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl create -f https://storage.googleapis.com/kubernetes-the-hard-way/kube-dns.yaml
+      register: ret_val_dns_create
+      changed_when: '"created" in ret_val_dns_create.stdout'
+      failed_when: 'ret_val_dns_create.rc != 0 and (ret_val_dns_create.rc == 1 and "already exists" not in ret_val_dns_create.stderr)'
+      tags:
+        - kubectl_dns
+      
+    - debug:
+        var: ret_val_dns_create
+        verbosity: 1
+      tags:
+        - kubectl_dns
+        
+    - name: SHELL | list pods created by kube-dns deployment
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl get pods -l k8s-app=kube-dns -n kube-system
+      register: ret_val_dns_get
+      tags:
+        - kubectl_dns
+      
+    - debug:
+        var: ret_val_dns_get
+        verbosity: 1
+      tags:
+        - kubectl_dns
+        
+    - name: SHELL | VERIFICATION | create a busybox deployment
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl run busybox --image=busybox --command -- sleep 3600
+      register: ret_val_bb
+      changed_when: '"created" in ret_val_bb.stdout'
+      failed_when: 'ret_val_bb.rc != 0 and (ret_val_bb.rc == 1 and "already exists" not in ret_val_bb.stderr)'
+      tags:
+        - kubectl_dns_verify
+      
+    - debug:
+        var: ret_val_bb
+        verbosity: 1
+      tags:
+        - kubectl_dns_verify
+        
+    - pause:
+        seconds: 30
+        
+    - name: SHELL | VERIFICATION | list the busybox deployment
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl get pods -l run=busybox
+      register: ret_val_bb
+      tags:
+        - kubectl_dns_verify
+      
+    - debug:
+        var: ret_val_bb
+        verbosity: 1
+      tags:
+        - kubectl_dns_verify
+        
+    - name: SHELL | VERIFICATION | retrieve full name of busybox pod and store
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl get pods -l run=busybox -o jsonpath="{.items[0].metadata.name}"
+      register: ret_val_bb_fn
+      tags:
+        - kubectl_dns_verify
+      
+    - debug:
+        var: ret_val_bb_fn
+        verbosity: 1
+      tags:
+        - kubectl_dns_verify
+        
+    - pause:
+        seconds: 30
+        
+    - name: SHELL | VERIFICATION | execute a DNS lookup for kubernetes service inside busybox pod
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl exec -ti {{ ret_val_bb_fn.stdout }} -- nslookup kubernetes
+      register: ret_val_bb_dns
+      ignore_errors: true
+      tags:
+        - kubectl_dns_verify
+      
+    - debug:
+        var: ret_val_bb_dns
+        verbosity: 1
+      tags:
+        - kubectl_dns_verify

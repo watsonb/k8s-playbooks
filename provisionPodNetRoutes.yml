@@ -1,0 +1,87 @@
+---
+###################
+# File:
+# playbooks/provisionPodNetRoutes.yml
+#
+# Description:
+# Sets internal networking routes for Kubernetes PODs
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/11-pod-network-routes.md 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+
+- name: PLAY | provision POD network routes
+  hosts: k8s-workers
+  gather_facts: false
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: SHELL | determine internal IP
+      delegate_to: 127.0.0.1
+      shell: echo $(gcloud compute instances describe {{ inventory_hostname }} --format 'value(networkInterfaces[0].networkIP)')
+      register: ret_val_gcp_inst_int_ip
+      tags:
+        - worker_int_ip
+        
+    - debug:
+        var: ret_val_gcp_inst_int_ip
+        verbosity: 1
+      tags:
+        - worker_int_ip
+        
+    - set_fact:
+        gcp_inst_int_ip: "{{ ret_val_gcp_inst_int_ip.stdout_lines[0] }}"
+      tags:
+        - worker_int_ip
+        
+    - debug:
+        var: gcp_inst_int_ip
+        verbosity: 1
+      tags:
+        - worker_int_ip
+        
+    - name: SHELL | determine worker POD CIDR from attribute added to VM at create time
+      shell: 'echo $(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/pod-cidr)'
+      register: ret_val_worker_pod_cidr
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: ret_val_worker_pod_cidr
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - set_fact:
+        gcp_worker_pod_cidr: "{{ ret_val_worker_pod_cidr.stdout_lines[0] }}"
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: gcp_worker_pod_cidr
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - name: SHELL | use gcloud to create route
+      delegate_to: 127.0.0.1
+      shell: gcloud compute routes create kubernetes-route-{{ inventory_hostname }} --network {{ gcp_net_name }} --next-hop-address {{ gcp_inst_int_ip }} --destination-range {{ gcp_worker_pod_cidr }}
+      register: ret_val_route
+      changed_when: '"Created" in ret_val_route.stderr'
+      failed_when: 'ret_val_route.rc != 0 and (ret_val_route.rc == 1 and "already exists" not in ret_val_route.stderr)'
+      tags:
+        - worker_routes
+        
+    - debug:
+        var: ret_val_route
+        verbosity: 1
+      tags:
+        - worker_routes

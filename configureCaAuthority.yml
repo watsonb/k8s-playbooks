@@ -1,0 +1,545 @@
+---
+###################
+# File:
+# playbooks/configureCaAuthority.yml
+#
+# Description:
+# Sets up the CA Authority box according to instructions here:
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/04-certificate-authority.md 
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/05-kubernetes-configuration-files.md
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/06-data-encryption-keys.md
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+
+- name: PLAY | populate controller ip variables
+  hosts: k8s-controllers
+  gather_facts: false
+  vars:
+    - tmp_dir: /tmp/etcd
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    - name: SHELL | determine internal IP
+      shell: 'echo $(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)'
+      register: ret_val_ctl_int_ip
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+        
+    - debug:
+        var: ret_val_ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+        
+    - set_fact:
+        ctl_int_ip: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+        
+    - set_fact:
+        gcp_instance_internal_ip_address: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+        
+    - debug:
+        var: ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        - etcd_svc_def
+
+
+- name: PLAY | Configure CA Authority
+  hosts: ansible-controllers
+  gather_facts: false
+  vars:
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: FILE | Ensure destination directory exists for CA files
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_dir
+        
+    - name: FILE | Ensure bin directory exists for user
+      file:
+        path: "~/bin"
+        state: directory
+      tags:
+        - ca_sw
+      
+    - name: GET_URL | Download/install cfssl
+      get_url:
+        url: https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+        dest: /usr/local/bin/cfssl
+        mode: 0775
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_sw
+      
+    - name: GET_URL | Download/install cfssljson
+      get_url:
+        url: https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+        dest: /usr/local/bin/cfssljson
+        mode: 0775
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_sw
+      
+    - name: GET_URL | Download/install kubectl
+      get_url:
+        url: https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: 0775
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_sw
+        
+    - name: FILE | Link to bin directory
+      file:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        state: link
+      with_items:
+        - { src: /usr/local/bin/cfssl, dest: "~/bin/cfssl" }
+        - { src: /usr/local/bin/cfssljson, dest: "~/bin/cfssljson" }
+        - { src: /usr/local/bin/kubectl, dest: "~/bin/kubectl" }
+      tags:
+        - ca_sw
+    
+    - name: TEMPLATE | Template out the CA config file
+      template:
+        src: ca-config.json.j2
+        dest: "{{ ca_dir }}/ca-config.json"
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_cer
+      
+    - name: TEMPLATE | Template out the CA csr file
+      template:
+        src: ca-csr.json.j2
+        dest: "{{ ca_dir }}/ca-csr.json"
+        owner: root
+        group: root
+      become: true
+      tags:
+        - ca_cer
+      
+    - name: SHELL | Generate CA cert and private key
+      shell: /usr/local/bin/cfssl gencert -initca ca-csr.json | /usr/local/bin/cfssljson -bare ca
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/ca.pem"
+      become: true
+      tags:
+        - ca_cer
+      
+    - name: TEMPLATE | Template out the admin csr file
+      template:
+        src: admin-csr.json.j2
+        dest: "{{ ca_dir }}/admin-csr.json"
+        owner: root
+        group: root
+      become: true
+      tags:
+        - admin_cer
+      
+    - name: SHELL | Generate admin cert and private key
+      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes admin-csr.json | /usr/local/bin/cfssljson -bare admin
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/admin.pem"
+      become: true
+      tags:
+        - admin_cer
+      
+    - name: TEMPLATE | Template out the kube proxy csr file
+      template:
+        src: kube-proxy-csr.json.j2
+        dest: "{{ ca_dir }}/kube-proxy-csr.json"
+        owner: root
+        group: root
+      become: true
+      tags:
+        - kube_proxy_cer
+      
+    - name: SHELL | Generate kube proxy cert and private key
+      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-proxy-csr.json | /usr/local/bin/cfssljson -bare kube-proxy
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/kube-proxy.pem"
+      become: true
+      tags:
+        - kube_proxy_cer
+      
+    - name: SHELL | determine static IP of network
+      shell: echo $(gcloud compute addresses describe {{ gcp_net_name }} --region $(gcloud config get-value compute/region) --format 'value(address)')
+      register: ret_val_gcp_net_static_ip
+      tags:
+        - kube_api_server_cer
+      
+    - debug:
+        var: ret_val_gcp_net_static_ip
+        verbosity: 1
+      tags:
+        - kube_api_server_cer
+        
+    - set_fact:
+        gcp_net_static_ip: "{{ ret_val_gcp_net_static_ip.stdout_lines[0] }}"
+      tags:
+        - kube_api_server_cer
+        
+    - debug:
+        var: gcp_net_static_ip
+        verbosity: 1
+      tags:
+        - kube_api_server_cer
+        
+    - name: TEMPLATE | Template out the kubernetes csr file
+      template:
+        src: kubernetes-csr.json.j2
+        dest: "{{ ca_dir }}/kubernetes-csr.json"
+        owner: root
+        group: root
+      become: true
+      tags:
+        - kube_api_server_cer
+        
+    - set_fact:
+        gcp_controller_ips: "{% for host in groups['k8s-controllers'] %}{{ hostvars[host]['gcp_instance_internal_ip_address'] }},{% endfor %}"
+      tags:
+        - kube_api_server_cer
+        
+    - name: SHELL | Generate kubernetes api server cert and private key
+      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=10.32.0.1,{{ gcp_controller_ips }},{{ gcp_net_static_ip }},127.0.0.1,kubernetes.default -profile=kubernetes kubernetes-csr.json | /usr/local/bin/cfssljson -bare kubernetes
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/kubernetes.pem"
+      become: true
+      tags:
+        - kube_api_server_cer
+        
+    - name: FILE | File permissions on Ansible controller
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0644
+        recurse: true
+      become: true
+      tags:
+        - ansible_cert_perms
+        
+    - name: FILE | Folder permissions on Ansible controller
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+      become: true
+      tags:
+        - ansible_cert_perms
+
+#################################################
+# Play to generate worker certs
+#################################################        
+- name: PLAY | Generate worker CSRs
+  hosts: k8s-workers
+  gather_facts: false
+  vars:
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: TEMPLATE | Template out the kubernetes csr file
+      delegate_to: 127.0.0.1
+      template:
+        src: worker-csr.json.j2
+        dest: "{{ ca_dir }}/{{ inventory_hostname }}-csr.json"
+        owner: root
+        group: root
+      become: true
+      tags:
+        - worker_cer
+        
+    - name: SHELL | determine external IP
+      delegate_to: 127.0.0.1
+      shell: echo $(gcloud compute instances describe {{ inventory_hostname }} --format 'value(networkInterfaces[0].accessConfigs[0].natIP)')
+      register: ret_val_gcp_inst_nat_ip
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: ret_val_gcp_inst_nat_ip
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - set_fact:
+        gcp_inst_nat_ip: "{{ ret_val_gcp_inst_nat_ip.stdout_lines[0] }}"
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: gcp_inst_nat_ip
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - name: SHELL | determine internal IP
+      delegate_to: 127.0.0.1
+      shell: echo $(gcloud compute instances describe {{ inventory_hostname }} --format 'value(networkInterfaces[0].networkIP)')
+      register: ret_val_gcp_inst_int_ip
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: ret_val_gcp_inst_int_ip
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - set_fact:
+        gcp_inst_int_ip: "{{ ret_val_gcp_inst_int_ip.stdout_lines[0] }}"
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: gcp_inst_int_ip
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - name: SHELL | Generate worker cert and private key
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname={{ inventory_hostname }},{{ gcp_inst_nat_ip }},{{ gcp_inst_int_ip }} -profile=kubernetes {{ inventory_hostname }}-csr.json | /usr/local/bin/cfssljson -bare {{ inventory_hostname }}
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/{{ inventory_hostname }}.pem"
+      become: true
+      tags:
+        - worker_cer
+        
+    - name: SHELL | determine static IP of network
+      delegate_to: 127.0.0.1
+      run_once: true
+      shell: echo $(gcloud compute addresses describe {{ gcp_net_name }} --region $(gcloud config get-value compute/region) --format 'value(address)')
+      register: ret_val_gcp_net_static_ip
+      tags:
+        - worker_kube_config
+      
+    - debug:
+        var: ret_val_gcp_net_static_ip
+        verbosity: 1
+      tags:
+        - worker_kube_config
+        
+    - set_fact:
+        gcp_net_static_ip: "{{ ret_val_gcp_net_static_ip.stdout_lines[0] }}"
+      tags:
+        - worker_kube_config
+        
+    - debug:
+        var: gcp_net_static_ip
+        verbosity: 1
+      tags:
+        - worker_kube_config
+        
+    - name: SHELL | Generate worker kube config
+      delegate_to: 127.0.0.1
+      shell: /usr/local/bin/kubectl {{ item.cmd }}
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig.lock"
+      become: true
+      with_items:
+        - { cmd: "config set-cluster {{ gcp_net_name }} --certificate-authority=ca.pem --embed-certs=true --server=https://{{ gcp_net_static_ip }}:6443 --kubeconfig={{ inventory_hostname }}.kubeconfig" }
+        - { cmd: "config set-credentials system:node:{{ inventory_hostname }} --client-certificate={{ inventory_hostname }}.pem --client-key={{ inventory_hostname }}-key.pem --embed-certs=true --kubeconfig={{ inventory_hostname }}.kubeconfig" }
+        - { cmd: "config set-context default --cluster={{ gcp_net_name }} --user=system:node:{{ inventory_hostname }} --kubeconfig={{ inventory_hostname }}.kubeconfig" }
+        - { cmd: "config use-context default --kubeconfig={{ inventory_hostname }}.kubeconfig" }
+      tags:
+        - worker_kube_config
+        
+    - name: FILE | touch a lock file to prevent worker kube config again
+      delegate_to: 127.0.0.1
+      file:
+        path: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig.lock"
+        state: touch
+        owner: root
+        group: root
+      become: true
+      tags:
+        - worker_kube_config
+        
+    - name: SHELL | Generate worker kube proxy config
+      delegate_to: 127.0.0.1
+      run_once: true
+      shell: /usr/local/bin/kubectl {{ item.cmd }}
+      args:
+        chdir: "{{ ca_dir }}"
+        creates: "{{ ca_dir }}/kube-proxy.kubeconfig.lock"
+      become: true
+      with_items:
+        - { cmd: "config set-cluster {{ gcp_net_name }} --certificate-authority=ca.pem --embed-certs=true --server=https://{{ gcp_net_static_ip }}:6443 --kubeconfig=kube-proxy.kubeconfig" }
+        - { cmd: "config set-credentials kube-proxy --client-certificate=kube-proxy.pem --client-key=kube-proxy-key.pem --embed-certs=true --kubeconfig=kube-proxy.kubeconfig" }
+        - { cmd: "config set-context default --cluster={{ gcp_net_name }} --user=kube-proxy --kubeconfig=kube-proxy.kubeconfig" }
+        - { cmd: "config use-context default --kubeconfig=kube-proxy.kubeconfig" }
+      tags:
+        - worker_kube_config
+        
+    - name: FILE | touch a lock file to prevent worker kube proxy config again
+      delegate_to: 127.0.0.1
+      run_once: true
+      file:
+        path: "{{ ca_dir }}/kube-proxy.kubeconfig.lock"
+        state: touch
+        owner: root
+        group: root
+      become: true
+      tags:
+        - worker_kube_config
+        
+    - name: FILE | File permissions on Ansible controller
+      delegate_to: 127.0.0.1
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0644
+        recurse: true
+      become: true
+      tags:
+        - ansible_cert_perms
+        
+    - name: FILE | Folder permissions on Ansible controller
+      delegate_to: 127.0.0.1
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+      become: true
+      tags:
+        - ansible_cert_perms
+        
+#################################################
+# Play to distribute certs to workers
+#################################################        
+- name: PLAY | Distribute certs to workers
+  hosts: k8s-workers
+  gather_facts: false
+  vars:
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: FILE | Ensure destination directory exists for CA files
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+      become: true
+      tags:
+        - worker_cert_dist
+    
+    - name: COPY | Copy appropriate cert files to workers
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      become: true
+      with_items:
+        - { src: "{{ ca_dir }}/ca.pem", dest: "{{ ca_dir }}/ca.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem", dest: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.pem", dest: "{{ ca_dir }}/{{ inventory_hostname }}.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig", dest: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig" }
+        - { src: "{{ ca_dir }}/kube-proxy.kubeconfig", dest: "{{ ca_dir }}/kube-proxy.kubeconfig" }
+      tags:
+        - worker_cert_dist
+        
+#################################################
+# Play to distribute certs to controllers
+#################################################        
+- name: PLAY | Distribute certs to controllers
+  hosts: k8s-controllers
+  gather_facts: false
+  vars:
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: FILE | Ensure destination directory exists for CA files
+      file:
+        path: "{{ ca_dir }}"
+        state: directory
+        owner: root
+        group: root
+      become: true
+      tags:
+        - controller_cert_dist
+    
+    - name: COPY | Copy appropriate cert files to controllers
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      become: true
+      with_items:
+        - { src: "{{ ca_dir }}/ca.pem", dest: "{{ ca_dir }}/ca.pem" }
+        - { src: "{{ ca_dir }}/ca-key.pem", dest: "{{ ca_dir }}/ca-key.pem" }
+        - { src: "{{ ca_dir }}/kubernetes-key.pem", dest: "{{ ca_dir }}/kubernetes-key.pem" }
+        - { src: "{{ ca_dir }}/kubernetes.pem", dest: "{{ ca_dir }}/kubernetes.pem" }
+      tags:
+        - controller_cert_dist
+        
+    - name: TEMPLATE | Template out the encryption config
+      template:
+        src: encryption-config.yaml.j2
+        dest: "{{ ca_dir }}/encryption-config.yaml"
+        owner: root
+        group: root
+      become: true
+      tags:
+        - encryption_config

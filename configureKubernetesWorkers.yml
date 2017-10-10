@@ -1,0 +1,218 @@
+---
+###################
+# File:
+# playbooks/configureKubernetesWorkers.yml
+#
+# Description:
+# Sets up Kubernetes workers according to instructions here:
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/09-bootstrapping-kubernetes-workers.md 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+
+- name: PLAY | configure Kubernetes workers
+  hosts: k8s-workers
+  gather_facts: false
+  vars:
+    - tmp_dir: /tmp/crio
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: YUM | install needed packages
+      yum:
+        name: "{{ item }}"
+        state: present
+      become: true
+      with_items:
+        - gpgme
+        - socat
+        - ostree
+      tags:
+        - k8s_bin
+        
+    - name: FILE | create necessary directories
+      file:
+        path: "{{ item }}"
+        state: directory
+      become: true
+      with_items:
+        - /etc/containers
+        - /etc/cni/net.d
+        - /etc/crio
+        - /opt/cni/bin
+        - /usr/local/libexec/crio
+        - /var/lib/kubelet
+        - /var/lib/kube-proxy
+        - /var/lib/kubernetes
+        - /var/run/kubernetes
+        - "{{ tmp_dir }}"
+      tags:
+        - k8s_bin
+        
+    - name: GET_URL | Fetch Kubernetes and runc binaries
+      get_url:
+        url: "{{ item.url }}"
+        dest: "{{ item.dest }}"
+        mode: 0777
+      become: true
+      with_items:
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl", dest: /usr/local/bin/kubectl }
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kube-proxy", dest: /usr/local/bin/kube-proxy }
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubelet", dest: /usr/local/bin/kubelet }
+        - { url: "https://github.com/opencontainers/runc/releases/download/v1.0.0-rc4/runc.amd64", dest: /usr/local/bin/runc }
+      tags:
+        - k8s_bin
+        
+    - name: UNARCHIVE | download and extract cni and crio
+      unarchive:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+      become: true
+      with_items:
+        - { src: "https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz", dest: /opt/cni/bin/ }
+        - { src: "https://storage.googleapis.com/kubernetes-the-hard-way/crio-amd64-v1.0.0-beta.0.tar.gz", dest: "{{ tmp_dir }}" }
+      tags:
+        - k8s_bin
+        
+    - name: COPY | copy crio binaries to destinations
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+        mode: 0777
+      become: true
+      with_items:
+        - { src: /tmp/crio/conmon, dest: /usr/local/libexec/crio/conmon }
+        - { src: /tmp/crio/pause, dest: /usr/local/libexec/crio/pause }
+        - { src: /tmp/crio/crio, dest: /usr/local/bin/crio }
+        - { src: /tmp/crio/crioctl, dest: /usr/local/bin/crioctl }
+        - { src: /tmp/crio/kpod, dest: /usr/local/bin/kpod }
+      tags:
+        - k8s_bin
+        
+    - name: SHELL | determine worker POD CIDR from attribute added to VM at create time
+      shell: 'echo $(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/pod-cidr)'
+      register: ret_val_worker_pod_cidr
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: ret_val_worker_pod_cidr
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - set_fact:
+        gcp_worker_pod_cidr: "{{ ret_val_worker_pod_cidr.stdout_lines[0] }}"
+      tags:
+        - worker_cer
+        
+    - debug:
+        var: gcp_worker_pod_cidr
+        verbosity: 1
+      tags:
+        - worker_cer
+        
+    - name: TEMPLATE | Template out the network configs
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+      become: true
+      with_items:
+        - { src: 10-bridge.conf.j2, dest: /etc/cni/net.d/10-bridge.conf }
+        - { src: 99-loopback.conf.j2, dest: /etc/cni/net.d/99-loopback.conf }
+      tags:
+        - k8s_worker_net_conf
+        
+    - name: COPY | copy crio conf to destinations
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+#        mode: 0777
+      become: true
+      with_items:
+        - { src: /tmp/crio/crio.conf, dest: /etc/crio/crio.conf }
+        - { src: /tmp/crio/seccomp.json, dest: /etc/crio/seccomp.json }
+        - { src: /tmp/crio/policy.json, dest: /etc/containers/policy.json }
+      tags:
+        - k8s_crio_conf
+        
+    - name: TEMPLATE | Template out the service defs
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+      become: true
+      with_items:
+        - { src: crio.service.j2, dest: /etc/systemd/system/crio.service }
+        - { src: kubelet.service.j2, dest: /etc/systemd/system/kubelet.service }
+        - { src: kube-proxy.service.j2, dest: /etc/systemd/system/kube-proxy.service }
+      tags:
+        - k8s_worker_svc_defs
+        
+    - name: COPY | copy certs to destinations
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+      become: true
+      with_items:
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}-key.pem", dest: "/var/lib/kubelet/{{ inventory_hostname }}-key.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.pem", dest: "/var/lib/kubelet/{{ inventory_hostname }}.pem" }
+        - { src: "{{ ca_dir }}/ca.pem", dest: "/var/lib/kubernetes/ca.pem" }
+        - { src: "{{ ca_dir }}/{{ inventory_hostname }}.kubeconfig", dest: "/var/lib/kubelet/kubeconfig" }
+        - { src: "{{ ca_dir }}/kube-proxy.kubeconfig", dest: "/var/lib/kube-proxy/kubeconfig" }
+      tags:
+        - k8s_worker_certs
+        
+    - name: FILE | create a symlink for libdevmapper
+      file:
+        src: /lib64/libdevmapper.so.1.02
+        dest: /lib64/libdevmapper.so.1.02.1
+        state: link
+      register: ret_val_lib
+      become: true
+      tags:
+        - k8s_lib
+        - k8s_svc
+      
+    - name: SHELL | run ldconfig
+      shell: ldconfig
+      become: true
+      when: ret_val_lib.changed
+      tags:
+        - k8s_lib
+        - k8s_svc
+        
+    - name: SHELL | run daemon-reload to pick up etcd service definition
+      shell: systemctl daemon-reload
+      become: true
+      tags:
+        - k8s_svc
+        
+    - name: SERVICE | Enable and start the k8s services
+      service:
+        name: "{{ item }}"
+        enabled: yes
+        state: restarted
+      become: true
+      with_items:
+        - crio
+        - kubelet
+        - kube-proxy
+      tags:
+        - k8s_svc

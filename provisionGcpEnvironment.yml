@@ -1,0 +1,178 @@
+---
+###################
+# File:
+# playbooks/provisionGcpEnvironment.yml
+#
+# Description:
+# Ensures a full GCP Virtual Environment is in place to receive further CM 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+- name: PLAY | Ensure GCP Environment Exists
+  hosts: ["gcp-environment:!ansible-controllers"]
+  gather_facts: false
+#  vars_files:
+#    - vars/vault.yml
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    
+    #~~~~~~~~~~
+    # These tasks will be run once per "environment"
+    #~~~~~~~~~~
+    - name: GCE_NET | Ensure network exists
+      gce_net:
+        name: "{{ gcp_net_name }}"
+        mode: "{{ gcp_net_mode }}"
+        subnet_name: "{{ gcp_net_subnet_name }}"
+        subnet_region: "{{ gcp_net_subnet_region }}"
+        ipv4_range: "{{ gcp_net_ipv4_range }}"
+        state: "{{ gcp_net_state }}"
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      delegate_to: 127.0.0.1
+      run_once: true
+      tags:
+        - gcp_network
+      register: ret_val
+        
+    - debug:
+        var: ret_val
+        verbosity: 1
+      run_once: true
+      tags:
+        - gcp_network
+        
+    - name: GCE_NET | Ensure firewall rules exist
+      gce_net:
+        name: "{{ item.network }}"
+        fwname: "{{ item.name }}"
+        allowed: "{{ item.allow }}"
+        state: "{{ item.state }}"
+        src_range: "{{ item.source_ranges }}"
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      with_items: "{{ gcp_net_fw_rules }}"
+      delegate_to: 127.0.0.1
+      run_once: true
+      tags:
+        - gcp_fw
+      register: ret_val
+        
+    - debug:
+        var: ret_val
+        verbosity: 1
+      run_once: true
+      tags:
+        - gcp_fw
+    
+    - name: GCE_EIP | Ensure external IP exists    
+      gce_eip:
+        name: "{{ gcp_ext_ip_name }}"
+        region: "{{ gcp_ext_ip_reggion }}"
+        state: "{{ gcp_ext_ip_state }}"
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      delegate_to: 127.0.0.1
+      run_once: true
+      tags:
+        - gcp_eip
+      register: ret_val
+        
+    - debug:
+        var: ret_val
+        verbosity: 1
+      run_once: true
+      tags:
+        - gcp_eip
+    
+    #~~~~~~~~~~
+    # These tasks will be run once per VM inside the environment
+    #~~~~~~~~~~
+    
+    - name: GCE | Ensure VMs (instances) exist
+      gce:
+        instance_names: "{{ gcp_instance_name }}"
+        zone: "{{ gcp_zone }}"
+        machine_type: "{{ gcp_machine_type }}"
+        image: "{{ gcp_image }}"
+        state: "{{ gcp_state }}"
+        disk_size: "{{ gcp_disk_size }}"
+        disk_auto_delete: "{{ gcp_disk_auto_delete }}"
+        network: "{{ gcp_network }}"
+        subnetwork: "{{ gcp_subnetwork }}"
+        preemptible: "{{ gcp_preemptible }}"
+        ip_forward: "{{ gcp_ip_forward }}"
+        metadata: "{{ gcp_metadata }}"
+        service_account_email: "{{ gcp_service_account_email }}"
+        credentials_file: "{{ gcp_credentials_file }}"
+        project_id: "{{ gcp_project_id }}"
+      delegate_to: 127.0.0.1
+      tags:
+        - gcp_vm
+      register: ret_val
+        
+    - debug:
+        var: ret_val
+        verbosity: 1
+      tags:
+        - gcp_vm
+        
+    - set_fact:
+        gce_inst_pub_ip: "{{ ret_val.instance_data[0].public_ip }}"
+      tags:
+        - gcp_vm
+        
+    - debug:
+        var: gce_inst_pub_ip
+        verbosity: 1
+      tags:
+        - gcp_vm
+    
+    - name: LINEINFILE | Update Ansible Controller's /etc/hosts to alias new machines
+      lineinfile:
+        path: /etc/hosts
+        line: '{{ gce_inst_pub_ip }}    {{ inventory_hostname }}'
+        state: present
+      become: true
+      with_items: ret_val.instance_data
+      delegate_to: 127.0.0.1
+      tags:
+        - gcp_vm
+        
+    - name: WAIT_FOR | Wait for SSH (port 22) on GCP VMs
+      delegate_to: 127.0.0.1
+      wait_for:
+        delay: 20
+#        host: "{{ gce_inst_pub_ip }}"
+        host: "{{ inventory_hostname }}"
+        port: 22
+        state: started
+        timeout: 240
+      
+      
+    #~~~~~~~~~~
+    # By this time, the machines should exist and be reachable by Ansible
+    #
+    # Note1: I had to add Ansible's SSH key as a project-wide SSH key IAW these
+    # instructions: https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys
+    #
+    # Note2: I added the metadata attribute to the gce module in an attempt to
+    # run a start-up script when the machine is created.  The intent of the 
+    # script is to add the ansible user (user of above key) to /etc/sudoers
+    # so it can run sudo commands without a password.  However, I don't see the
+    # expected line in /etc/sudoers, but the ansible user can still run sudo
+    # commands without a password.  Perhaps doing note1 above accomplishes the
+    # desired effect via Google magic?
+    #~~~~~~~~~~

@@ -1,0 +1,5 @@
+---
+
+# below value was generated as follows (run on bash):
+# echo $(head -c 32 /dev/urandom | base64)
+k8s_encryption_key: KTvHP5f2gs2pwk9ri613oqx2x4Az9R7pq6OaxFkiaZE=

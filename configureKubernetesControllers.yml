@@ -1,0 +1,136 @@
+---
+###################
+# File:
+# playbooks/configureKubernetesControllers.yml
+#
+# Description:
+# Sets up Kubernetes controllers according to instructions here:
+# https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/08-bootstrapping-kubernetes-controllers.md 
+#
+# Notes 
+#
+# Author(s):
+#   - Ben Watson
+# Notes:
+#   - TODO: vault the admin password
+###################
+
+- name: PLAY | configure Kubernetes controllers
+  hosts: k8s-controllers
+  gather_facts: false
+  vars:
+    - tmp_dir: /tmp/etcd
+    - ca_dir: /opt/k8s-ca
+  tasks:
+  
+    ###########
+    # define/include any "task-level" tasks here
+    ###########
+    
+    - name: GET_URL | Fetch Kubernetes controller binaries
+      get_url:
+        url: "{{ item.url }}"
+        dest: "{{ item.dest }}"
+        mode: 0777
+      become: true
+      with_items:
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kube-apiserver", dest: /usr/local/bin/kube-apiserver }
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kube-controller-manager", dest: /usr/local/bin/kube-controller-manager }
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kube-scheduler", dest: /usr/local/bin/kube-scheduler }
+        - { url: "https://storage.googleapis.com/kubernetes-release/release/v1.7.4/bin/linux/amd64/kubectl", dest: /usr/local/bin/kubectl }
+      tags:
+        - k8s_bin
+        
+    - name: FILE | Ensure kubernetes directories exist
+      file:
+        path: "{{ item.dir }}"
+        state: directory
+        owner: root
+        group: root
+      become: true
+      tags:
+        - k8s_dirs
+      with_items:
+        - { dir: /var/lib/kubernetes/ }
+        
+    - name: COPY | copy the keys to etcd conf dirs
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+      become: true
+      with_items:
+        - { src: "{{ ca_dir }}/ca.pem", dest: /var/lib/kubernetes/ca.pem }
+        - { src: "{{ ca_dir }}/ca-key.pem", dest: /var/lib/kubernetes/ca-key.pem }
+        - { src: "{{ ca_dir }}/kubernetes-key.pem", dest: /var/lib/kubernetes/kubernetes-key.pem }
+        - { src: "{{ ca_dir }}/kubernetes.pem", dest: /var/lib/kubernetes/kubernetes.pem }
+        - { src: "{{ ca_dir }}/encryption-config.yaml", dest: /var/lib/kubernetes/encryption-config.yaml }
+      tags:
+        - k8s_keys
+        
+    - name: SHELL | determine internal IP
+      shell: 'echo $(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)'
+      register: ret_val_ctl_int_ip
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - debug:
+        var: ret_val_ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - set_fact:
+        ctl_int_ip: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - set_fact:
+        gcp_instance_internal_ip_address: "{{ ret_val_ctl_int_ip.stdout_lines[0] }}"
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - debug:
+        var: ctl_int_ip
+        verbosity: 1
+      tags:
+        - controller_int_ip
+        - k8s_svc_def
+        
+    - name: TEMPLATE | Template out the k8s service defs
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+      become: true
+      with_items:
+        - { src: kube-apiserver.service.j2, dest: /etc/systemd/system/kube-apiserver.service }
+        - { src: kube-controller-manager.service.j2, dest: /etc/systemd/system/kube-controller-manager.service }
+        - { src: kube-scheduler.service.j2, dest: /etc/systemd/system/kube-scheduler.service }
+      tags:
+        - k8s_svc
+        - k8s_svc_def
+        
+    - name: SHELL | run daemon-reload to pick up etcd service definition
+      shell: systemctl daemon-reload
+      become: true
+      tags:
+        - k8s_svc
+        
+    - name: SERVICE | Enable and start the k8s services
+      service:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+      become: true
+      with_items:
+        - kube-apiserver
+        - kube-controller-manager
+        - kube-scheduler
+      tags:
+        - k8s_svc

@@ -1,0 +1,49 @@
+#note, ensure the ansible controller can resolve these hostnames
+#either via /etc/hosts or DNS
+
+##########
+#individual hosts
+##########
+
+#need this for selinux, python, virtualenv, chroot, and ansible not playing nice
+#see https://dmsimard.com/2016/01/08/selinux-python-virtualenv-chroot-and-ansible-dont-play-nice
+#localhost ansible_python_interpreter=/usr/bin/python
+
+#----------
+# The main Ansible controller
+#----------
+ansible-centos7
+
+##########
+#groups
+##########
+
+[ansible-controllers]
+ansible-centos7
+
+[k8s-controllers]
+dev-controller-0
+dev-controller-1
+#dev-controller-2
+
+[k8s-workers]
+dev-worker-0
+dev-worker-1
+#dev-worker-2
+
+[binary-repo-servers]
+ansible-centos7
+
+[binary-repo-clients]
+
+##########
+#groups of groups
+##########
+
+[development-environment:children]
+ansible-controllers
+k8s-controllers
+k8s-workers
+
+[gcp-environment:children]
+development-environment
